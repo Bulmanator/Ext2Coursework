@@ -1,0 +1,37 @@
+Filesystem volume name:   SCC211 OS Module
+Last mounted on:          <not available>
+Filesystem UUID:          4bc187bd-ff08-41a9-b398-b83a87967aba
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      ext_attr resize_inode dir_index filetype sparse_super large_file
+Filesystem flags:         signed_directory_hash 
+Default mount options:    user_xattr acl
+Filesystem state:         not clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              5136
+Block count:              20480
+Reserved block count:     1024
+Free blocks:              19622
+Free inodes:              5005
+First block:              1
+Block size:               1024
+Fragment size:            1024
+Reserved GDT blocks:      79
+Blocks per group:         8192
+Fragments per group:      8192
+Inodes per group:         1712
+Inode blocks per group:   214
+Filesystem created:       Wed Nov  5 11:49:40 2014
+Last mount time:          n/a
+Last write time:          Wed Nov  5 11:49:40 2014
+Mount count:              1
+Maximum mount count:      -1
+Last checked:             Wed Nov  5 11:49:40 2014
+Check interval:           0 (<none>)
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	              128
+Default directory hash:   half_md4
+Directory Hash Seed:      775a13ae-37a4-42a3-abc9-90dee586437f

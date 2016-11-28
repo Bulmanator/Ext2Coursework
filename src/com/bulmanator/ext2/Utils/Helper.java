@@ -1,11 +1,10 @@
 package com.bulmanator.ext2.Utils;
 
-/**
- * Created by james on 26/11/16.
- */
+import java.nio.ByteOrder;
+
 public class Helper {
 
-    public void dumpHexBytes(byte[] bytes) {
+    public static void dumpHexBytes(byte[] bytes) {
         int remain = bytes.length % 16;
         int len = (bytes.length - remain) / 16;
         for(int i = 0; i < len; i++) {
@@ -30,6 +29,9 @@ public class Helper {
                     else {
                         if(current > 31 && current < 127) {
                             System.out.printf("%c", current);
+                            if(current == '\0') {
+                                System.out.println("NULL BYTE FOUND");
+                            }
                         }
                         else {
                             System.out.printf(".");
@@ -45,32 +47,21 @@ public class Helper {
         }
     }
 
-    public static int intFromBytes(byte[] b) {
-        byte[] tmp = new byte[4];
+    public static int intFromBytes(byte[] bytes) {
 
-        if(b.length == 1) {
-            tmp[0] = 0;
-            tmp[1] = 0;
-            tmp[2] = 0;
-            tmp[3] = b[0];
-        }
-        else if(b.length == 2) {
-            tmp[0] = 0;
-            tmp[1] = 0;
-            tmp[2] = b[1];
-            tmp[3] = b[0];
-        }
-        else {
-            tmp[0] = b[3];
-            tmp[1] = b[2];
-            tmp[2] = b[1];
-            tmp[3] = b[0];
+        // Reverse Byte array if Little Endian to read correct values
+        if(ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            for (int i = 0; i < bytes.length / 2; i++) {
+                byte temp = bytes[i];
+                bytes[i] = bytes[bytes.length - i - 1];
+                bytes[bytes.length - i - 1] = temp;
+            }
         }
 
         int value = 0;
-        for(int i = 0; i < 4; i++) {
-            int shift = (4 - 1 - i) * 8;
-            value += (tmp[i] & 0x000000FF) << shift;
+        for(int i = 0; i < bytes.length; i++) {
+            int shift = (bytes.length - 1 - i) * 8;
+            value += (bytes[i] & 0x000000FF) << shift;
         }
 
         return value;

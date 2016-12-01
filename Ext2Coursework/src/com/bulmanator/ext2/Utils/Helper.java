@@ -34,7 +34,7 @@ public class Helper {
                             System.out.printf("%c", current);
                         }
                         else {
-                            System.out.printf(".");
+                            System.out.printf("-");
                         }
                         if ((k + 1) % 8 == 0) System.out.print(" | ");
                     }
@@ -76,7 +76,7 @@ public class Helper {
                             if (bytes[i] > 31 && bytes[i] < 127) {
                                 System.out.printf("%c", bytes[i]);
                             } else {
-                                System.out.print(".");
+                                System.out.print("-");
                             }
                         } else {
                             System.out.print("X");
@@ -86,5 +86,6 @@ public class Helper {
                 }
             }
         }
+        System.out.println();
     }
 }

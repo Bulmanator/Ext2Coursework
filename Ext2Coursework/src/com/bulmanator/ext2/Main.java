@@ -26,12 +26,20 @@ public class Main {
 
         v.printSuperblock();
 
-        int inode = v.readInt(2056) * v.BLOCK_SIZE;
-       // byte[] b = v.read(inode + , 8 * v.INODE_SIZE);
-        System.out.println();
-       // Helper.dumpHexBytes(b);
+        Ext2File file = new Ext2File(v, "/deep/down/in/the/filesystem/there/lived/a/file");
 
-        Inode i = new Inode(v, inode + 11 * v.INODE_SIZE);
+
+        //System.out.println(((1722 - 1) % v.INODES_PER_GROUP) * v.INODE_SIZE);
+
+      // Inode i = new Inode(v, v.getInodeTablePtr(1) + ((1722 - 1) % v.INODES_PER_GROUP) * v.INODE_SIZE);
+       // Inode i = new Inode(v, v.getInodeTablePtr(0) + (11 * v.INODE_SIZE));
+        //i.printInodeData();
+
+
+
+        //System.out.printf("Direct Block 1: 0x%02x\n", i.getDirectBlocks()[0]);
+       //byte[] d = v.read(i.getDirectBlocks()[0] * v.BLOCK_SIZE, v.BLOCK_SIZE);
+       //Helper.dumpHexBytes(d);
 
         v.close();
     }

@@ -18,6 +18,7 @@ public class Inode {
     private int accessTime;
 
     // Data
+    private int links;
     private int[] directBlocks;
     private int inderectBlock;
     private int doubleIndirectBlock;
@@ -34,6 +35,7 @@ public class Inode {
         modificationTime = volume.readInt(position + 16);
         accessTime = volume.readInt(position + 8);
 
+        links = volume.readShort(position + 26);
         directBlocks = new int[12];
         for(int i = 0; i < 12; i++) {
             directBlocks[i] = volume.readInt(position + 40L + (i * 4));
@@ -42,9 +44,9 @@ public class Inode {
         inderectBlock = volume.readInt(position + 88L);
         doubleIndirectBlock = volume.readInt(position + 92L);
         tripleIndirectBlock = volume.readInt(position + 96L);
+    }
 
-        printPermissionsString();
-        printInodeData();
+    public void readInodeData(Volume volume) {
         int tmpSize = size;
         int i = 0;
         while(directBlocks[i] != 0) {
@@ -73,6 +75,7 @@ public class Inode {
         d = new Date(accessTime * 1000L);
         System.out.println("   - Last Accessed: " + sdf.format(d));
         System.out.println("-- Data");
+        System.out.println("   - Hard Links: " + links);
         System.out.println("-- Direct Pointers: ");
         for(int i = 0; i < directBlocks.length; i++) {
             System.out.printf("   - DP%d: 0x%02x\n", i, directBlocks[i]);
@@ -99,4 +102,20 @@ public class Inode {
 
         System.out.println("Permissions: " + per);
     }
+
+
+    public int getPermissions() { return permissions; }
+    public int getUserID() { return userID; }
+    public int getGroupID() { return groupID; }
+
+    public int getSize() { return size; }
+    public int getCreationTime() { return creationTime; }
+    public int getModificationTime() { return modificationTime; }
+    public int getAccessTime() { return accessTime; }
+
+    public int[] getDirectBlocks() { return directBlocks; }
+    public int getInderectBlock() { return inderectBlock; }
+    public int getDoubleIndirectBlock() { return doubleIndirectBlock; }
+
+    public int getTripleIndirectBlock() { return tripleIndirectBlock; }
 }

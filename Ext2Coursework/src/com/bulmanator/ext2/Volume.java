@@ -1,6 +1,7 @@
 package com.bulmanator.ext2;
 
 import com.bulmanator.ext2.Utils.Helper;
+import com.bulmanator.ext2.Utils.Inode;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +23,9 @@ public class Volume {
     public final String VOLUME_NAME;
 
     private RandomAccessFile fileSystem;
+
+   // private int inodeTablePtr;
+    private Inode root;
 
     public Volume(String file) throws Exception {
         fileSystem = new RandomAccessFile(new File(file), "r");
@@ -46,6 +50,9 @@ public class Volume {
 
         // Volume Label
         VOLUME_NAME = new String(read(BLOCK_SIZE + 120L, 16));
+
+        //inodeTablePtr = readInt(2056) * BLOCK_SIZE;
+        root = new Inode(this, getInodeTablePtr(0) + INODE_SIZE);
     }
 
     public void printSuperblock() {
@@ -64,18 +71,32 @@ public class Volume {
 
         System.out.printf(" - Signature: 0x%02X\n\n", SIGNATURE);
     }
-
-    public void seek(long position) {
-        try { fileSystem.seek(position); }
-        catch (IOException ex) { ex.printStackTrace(); }
-    }
-
     public long getPosition() {
         try { return fileSystem.getFilePointer(); }
         catch (IOException ex) {
             ex.printStackTrace();
             return -1L;
         }
+    }
+    public Inode getRoot() { return root; }
+
+    public Inode getInode(int index) {
+        int offset = ((index - 1) % INODES_PER_GROUP) * INODE_SIZE;
+        offset += getInodeTablePtr((index - 1) / INODES_PER_GROUP);
+
+        return new Inode(this, offset);
+    }
+
+    public int getInodeTablePtr(int group) {
+        int offset = BLOCK_SIZE + (32 * group);
+        offset += BLOCK_SIZE;
+        offset += 8;
+        return readInt(offset) * BLOCK_SIZE;
+    }
+
+    public void seek(long position) {
+        try { fileSystem.seek(position); }
+        catch (IOException ex) { ex.printStackTrace(); }
     }
 
     public int readShort(long start) {
@@ -101,7 +122,8 @@ public class Volume {
     public byte read(long start) {
         try {
             fileSystem.seek(start);
-            return fileSystem.readByte();
+            byte b = fileSystem.readByte();
+            return b;
         }
         catch(IOException ex) {
             ex.printStackTrace();
@@ -128,3 +150,4 @@ public class Volume {
         }
     }
 }
+

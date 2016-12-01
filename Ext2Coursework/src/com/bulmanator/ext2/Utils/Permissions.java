@@ -1,6 +1,7 @@
 package com.bulmanator.ext2.Utils;
 
 public class Permissions {
+
     // Inode Types
     public static final int SOCKET = 0xC000;
     public static final int SYM_LINK = 0xA000;
@@ -40,6 +41,7 @@ public class Permissions {
 
     public static final String[] PERMISSION_STRINGS = {
             "s", "l", "-", "b", "d", "c", "p",
+            "", "", "",
             "r", "w", "x",
             "r", "w", "x",
             "r", "w", "x"

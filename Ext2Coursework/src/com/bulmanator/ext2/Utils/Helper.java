@@ -1,6 +1,8 @@
 package com.bulmanator.ext2.Utils;
 
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class Helper {
 
@@ -88,4 +90,11 @@ public class Helper {
         }
         System.out.println();
     }
+
+    public static String toDate(long ms) {
+        Date d = new Date(ms);
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM d hh:mm");
+        return sdf.format(d);
+    }
+
 }

@@ -26,24 +26,24 @@ public class Inode {
 
     public Inode(Volume volume, long position) {
 
-        permissions = volume.readShort(position);
-        userID = volume.readShort(position + 2);
-        groupID = volume.readShort(position + 24);
+        permissions = volume.readNum(position, Volume.SHORT);
+        userID = volume.readNum(position + 2, Volume.SHORT);
+        groupID = volume.readNum(position + 24, Volume.SHORT);
 
-        size = volume.readInt(position + 4) | volume.readInt(position + 108);
-        creationTime = volume.readInt(position + 12);
-        modificationTime = volume.readInt(position + 16);
-        accessTime = volume.readInt(position + 8);
+        size = volume.readNum(position + 4, Volume.INTEGER) | volume.readNum(position + 108, Volume.INTEGER);
+        creationTime = volume.readNum(position + 12, Volume.INTEGER);
+        modificationTime = volume.readNum(position + 16, Volume.INTEGER);
+        accessTime = volume.readNum(position + 8, Volume.INTEGER);
 
-        links = volume.readShort(position + 26);
+        links = volume.readNum(position + 26, Volume.SHORT);
         directBlocks = new int[12];
         for(int i = 0; i < 12; i++) {
-            directBlocks[i] = volume.readInt(position + 40L + (i * 4));
+            directBlocks[i] = volume.readNum(position + 40L + (i * 4), Volume.INTEGER);
         }
 
-        inderectBlock = volume.readInt(position + 88L);
-        doubleIndirectBlock = volume.readInt(position + 92L);
-        tripleIndirectBlock = volume.readInt(position + 96L);
+        inderectBlock = volume.readNum(position + 88L, Volume.INTEGER);
+        doubleIndirectBlock = volume.readNum(position + 92L, Volume.INTEGER);
+        tripleIndirectBlock = volume.readNum(position + 96L, Volume.INTEGER);
     }
 
     public void readInodeData(Volume volume) {
@@ -64,9 +64,9 @@ public class Inode {
 
         System.out.println("[Inode Data]");
         System.out.println("-- Ownership");
-        System.out.printf("   - Permissions: 0x%02x\n", permissions);
-        System.out.println("   - User ID: " + userID);
-        System.out.println("   - Group ID: " + groupID);
+        System.out.printf("   - Permissions: %s (0x%02x)\n", getPermissionString(), permissions);
+        System.out.println("   - User ID: " + userID + " (" + (userID == 0 ? "root" : userID == 1000 ? "user" : "unknown") + ")");
+        System.out.println("   - Group ID: " + groupID + " (" + (groupID == 0 ? "root" : groupID == 1000 ? "user" : "unknown") + ")");
         System.out.println("-- Misc");
         System.out.println("   - Size (Bytes): " + size);
         System.out.println("   - Creation Time: " + sdf.format(d));
@@ -86,7 +86,7 @@ public class Inode {
         System.out.println();
     }
 
-    public void printPermissionsString() {
+    public String getPermissionString() {
         String per = "";
 
         int len = Permissions.PERMISSION_STRINGS.length;
@@ -94,13 +94,11 @@ public class Inode {
             if((permissions & Permissions.PERMISSIONS[i]) == Permissions.PERMISSIONS[i]) {
                 per += Permissions.PERMISSION_STRINGS[i];
             }
-            else if(i > 6) {
+            else if(i > 9) {
                 per += "-";
             }
         }
-
-
-        System.out.println("Permissions: " + per);
+        return per;
     }
 
 
@@ -113,6 +111,7 @@ public class Inode {
     public int getModificationTime() { return modificationTime; }
     public int getAccessTime() { return accessTime; }
 
+    public int getLinks() { return links; }
     public int[] getDirectBlocks() { return directBlocks; }
     public int getInderectBlock() { return inderectBlock; }
     public int getDoubleIndirectBlock() { return doubleIndirectBlock; }

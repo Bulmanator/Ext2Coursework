@@ -1,10 +1,12 @@
-package com.bulmanator.ext2;
+package com.bulmanator.ext2.Structure;
 
-import com.bulmanator.ext2.Utils.Inode;
+import com.bulmanator.ext2.Utils.Helper;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.Vector;
 
 public class Volume {
 
@@ -90,7 +92,6 @@ public class Volume {
 
         return new Inode(this, offset);
     }
-
     public int getInodeTablePtr(int group) {
         int offset = BLOCK_SIZE + (32 * group);
         offset += BLOCK_SIZE;
@@ -101,6 +102,63 @@ public class Volume {
     public void seek(long position) {
         try { fileSystem.seek(position); }
         catch (IOException ex) { ex.printStackTrace(); }
+    }
+
+    private int[] getUsedPtrs(int indPtr, int level) {
+        ArrayList<Integer> pointers = new ArrayList<>();
+        if(level == 1) {
+            for(int i = 0; i < BLOCK_SIZE / INTEGER; i++) {
+                int ptr = readNum(indPtr * BLOCK_SIZE + (i * 4), INTEGER);
+                if(ptr != 0) pointers.add(ptr);
+            }
+        }
+        else {
+            for(int i = 0; i < BLOCK_SIZE / INTEGER; i++) {
+                int ptr = readNum(indPtr * BLOCK_SIZE + (i * 4), INTEGER);
+                if(ptr != 0) {
+                    int[] tmp = getUsedPtrs(ptr, level - 1);
+                    for (int j = 0; j < tmp.length; j++) {
+                        pointers.add(tmp[j]);
+                    }
+                }
+            }
+        }
+
+        int[] ind = new int[pointers.size()];
+        for(int i = 0; i < ind.length; i++) {
+            ind[i] = pointers.get(i);
+        }
+
+        return ind;
+    }
+    public int[] getUsedPtrs(Inode inode) {
+        ArrayList<Integer> pointers = new ArrayList<>();
+
+        if(inode.getTripleIndirectBlock() != 0) {
+            int[] trplPtrs = getUsedPtrs(inode.getTripleIndirectBlock(), 3);
+            for(int i : trplPtrs) { pointers.add(i); }
+        }
+
+        if(inode.getDoubleIndirectBlock() != 0) {
+            int[] dblPtrs = getUsedPtrs(inode.getDoubleIndirectBlock(), 2);
+            for(int i : dblPtrs) { pointers.add(i); }
+        }
+        if(inode.getInderectBlock() != 0) {
+            int[] snglPtrs = getUsedPtrs(inode.getInderectBlock(), 1);
+            for(int i : snglPtrs) { pointers.add(i); }
+        }
+
+        for(int i = 0; i < 12; i++) {
+            if(inode.getDirectBlocks()[i] != 0)
+                pointers.add(inode.getDirectBlocks()[i]);
+        }
+
+        // Convert ArrayList to int array;
+        int[] used = new int[pointers.size()];
+        for(int i = 0; i < used.length; i++) {
+            used[i] = pointers.get(i);
+        }
+        return used;
     }
 
     public int readNum(long start, int size) {
@@ -127,7 +185,6 @@ public class Volume {
 
         return result;
     }
-
     public byte[] read(long start, int length) {
         byte[] ret = new byte[length];
         try {

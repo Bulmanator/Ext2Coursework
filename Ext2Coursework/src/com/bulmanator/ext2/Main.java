@@ -1,13 +1,16 @@
 package com.bulmanator.ext2;
 
+import com.bulmanator.ext2.Structure.Ext2File;
+import com.bulmanator.ext2.Structure.Volume;
+import com.bulmanator.ext2.Terminal.Interpeter;
 import com.bulmanator.ext2.Utils.Helper;
-import com.bulmanator.ext2.Utils.Inode;
+import com.bulmanator.ext2.Structure.Inode;
 
-import java.io.IOException;
-import java.nio.ByteOrder;
 import java.util.Scanner;
 
 public class Main {
+
+    private Volume v;
 
     public static void main(String[] args) {
         Main m = new Main();
@@ -16,7 +19,7 @@ public class Main {
 
     private void run() {
         Scanner s = new Scanner(System.in);
-        Volume v = null;
+        v = null;
         try { v = new Volume("resources/ext2fs"); }
         catch (Exception e) {
             e.printStackTrace();
@@ -26,7 +29,38 @@ public class Main {
 
     //    v.printSuperblock();
 
-       // Ext2File file = new Ext2File(v, "/deep/down/");
+      // Ext2File file = new Ext2File(v, "/files/ind-e");
+
+
+       //
+       // System.out.println("Size: " + v.BLOCK_SIZE / Volume.INTEGER);
+        Inode ind = v.getInode(1721);
+        ind.printInodeData();
+
+        long sTime = System.nanoTime();
+        int[] ptrs = v.getUsedPtrs(ind);
+        long eTime = System.nanoTime();
+
+        System.out.println("Time Taken: " + (eTime - sTime));
+        for(int i = 0; i < ptrs.length; i++) {
+            System.out.printf("0x%02x\n", ptrs[i]);
+            byte[] d = v.read(ptrs[i] * v.BLOCK_SIZE, v.BLOCK_SIZE);
+            Helper.dumpHexBytes(d);
+
+        }
+        //byte[] d = v.read(ind.getInderectBlock() * v.BLOCK_SIZE, v.BLOCK_SIZE);
+        //Helper.dumpHexBytes(d);
+
+      //  int[] ptrs = v.getSingleIndirectPtrs(ind.getInderectBlock());
+      //  for(int i = 0; i < ptrs.length; i++) {
+       //     System.out.printf("0x%02x\n", ptrs[i]);
+      //  }
+
+        //long sTime = System.nanoTime();
+      //  readTrplIndBlock(ind.getTripleIndirectBlock());
+       // long eTime = System.nanoTime();
+
+       // System.out.println("Time: " + (eTime - sTime));
 
        // Inode i = v.getInode(12);
        // i.printInodeData();
@@ -38,8 +72,11 @@ public class Main {
        //byte[] d = v.read(i.getDirectBlocks()[0] * v.BLOCK_SIZE, v.BLOCK_SIZE);
        //Helper.dumpHexBytes(d);
 
+      //  Interpeter interpeter = new Interpeter();
+      //  interpeter.run();
 
-        while(true) {
+
+      /*  while(true) {
             System.out.print("user@scc211:/$ ");
             String next = s.nextLine();
             if(next.equals("ls -l")) {
@@ -108,11 +145,45 @@ public class Main {
                 String[] split = next.split(" ");
                 System.out.println(split[0] + ": command not found");
             }
-        }
+        }*/
 
         v.close();
     }
 
+    long processed = 0;
+    private void readIndBlock(int indPtr) {
+        System.out.println("Ind Ptr: " + indPtr);
+        for(int i = 0; i < (v.BLOCK_SIZE / Volume.INTEGER); i++) {
+            int ptr = v.readNum((indPtr * v.BLOCK_SIZE) + (i * Volume.INTEGER), Volume.INTEGER);
+            if(ptr != 0) {
+                byte[] d = v.read(ptr, v.BLOCK_SIZE);
+                Helper.dumpHexBytes(d);
+                processed += 1;
+            }
+        }
+    }
+
+    private void readDblIndBlock(int dblIndPtr) {
+        System.out.println("Dbl Ptr: " + dblIndPtr);
+        for(int i = 0; i < (v.BLOCK_SIZE / Volume.INTEGER); i++) {
+            int ptr = v.readNum((dblIndPtr * v.BLOCK_SIZE) + (i * Volume.INTEGER), Volume.INTEGER);
+            if(ptr != 0) {
+                readIndBlock(ptr);
+            }
+        }
+    }
+
+    private void readTrplIndBlock(int trplIndPtr) {
+        processed = 0;
+        System.out.println("Trpl Ptr: " + trplIndPtr);
+        for(int i = 0; i < (v.BLOCK_SIZE / Volume.INTEGER); i++) {
+            int ptr = v.readNum((trplIndPtr * v.BLOCK_SIZE) + (i * Volume.INTEGER), Volume.INTEGER);
+            if(ptr != 0) {
+                readDblIndBlock(ptr);
+            }
+        }
+        System.out.println("Processed Pointers: " + processed);
+    }
 
     private void printDirectory(int i, int len, int nameLen, int type, String name) {
         System.out.println("Inode: " + i);

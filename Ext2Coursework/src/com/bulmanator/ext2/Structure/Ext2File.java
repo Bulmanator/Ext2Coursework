@@ -1,9 +1,4 @@
-package com.bulmanator.ext2;
-
-import com.bulmanator.ext2.Utils.Helper;
-import com.bulmanator.ext2.Utils.Inode;
-
-import java.io.IOException;
+package com.bulmanator.ext2.Structure;
 
 public class Ext2File {
 
@@ -16,7 +11,18 @@ public class Ext2File {
 
         int size = currentInode.getSize();
         boolean fileFound = true;
-        int overallOffset = 0, currentOffset = 0, currentPtr = currentInode.getDirectBlocks()[0] * volume.BLOCK_SIZE;
+        int overallOffset = 0, currentOffset = 0;
+        int currentPtr = 0;
+
+        for(int i = 0; i < 15; i++) {
+            if(i < 12) { currentPtr = currentInode.getDirectBlocks()[0] * volume.BLOCK_SIZE; }
+            else if(i == 12) { currentPtr = currentInode.getInderectBlock() * volume.BLOCK_SIZE; }
+            else if(i == 13) { currentPtr = currentInode.getDoubleIndirectBlock() * volume.BLOCK_SIZE; }
+            else { currentPtr = currentInode.getTripleIndirectBlock() * volume.BLOCK_SIZE; }
+
+            if(currentPtr != 0) break;
+        }
+
         int block = 0;
 
         for(int i = 0; i < directories.length; i++) {
@@ -28,6 +34,7 @@ public class Ext2File {
 
                 if(name.equals(directories[i])) {
                     currentInode = volume.getInode(inode);
+                    System.out.println("Inode: " + inode);
                     System.out.println("Current Inode Size: " + currentInode.getSize());
                     currentPtr = currentInode.getDirectBlocks()[0] * volume.BLOCK_SIZE;
                     break;
@@ -49,7 +56,7 @@ public class Ext2File {
             }
 
             if(overallOffset == currentInode.getSize()) {
-                System.out.println("File Not Found!");
+                System.out.println("Ext2File: File not found");
                 fileFound = false;
                 break;
             }
@@ -60,10 +67,11 @@ public class Ext2File {
 
         if(fileFound) {
             inode = currentInode;
-            currentInode.printInodeData();
-            for(int i = 0; i < inode.getSize() / volume.BLOCK_SIZE; i++) {
-
+            if(inode.isDirectory()) {
+                System.out.println("Ext2File: " + path + ": Is a directory");
+                return;
             }
+            inode.printInodeData();
         }
 
 

@@ -1,11 +1,17 @@
-package com.bulmanator.ext2.Utils;
+package com.bulmanator.ext2.Structure;
 
-import com.bulmanator.ext2.Volume;
+import com.bulmanator.ext2.Utils.Helper;
+import com.bulmanator.ext2.Utils.Permissions;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Vector;
 
 public class Inode {
+
+    // The Volume on which this Inode is stored
+    private Volume volume;
+
     // Ownership
     private int permissions;
     private int userID;
@@ -25,6 +31,8 @@ public class Inode {
     private int tripleIndirectBlock;
 
     public Inode(Volume volume, long position) {
+
+        this.volume = volume;
 
         permissions = volume.readNum(position, Volume.SHORT);
         userID = volume.readNum(position + 2, Volume.SHORT);
@@ -46,34 +54,32 @@ public class Inode {
         tripleIndirectBlock = volume.readNum(position + 96L, Volume.INTEGER);
     }
 
-    public void readInodeData(Volume volume) {
-        int tmpSize = size;
+    public void getUsedPointers(Volume volume) {
+
+
+        /* int tmpSize = size;
         int i = 0;
+        byte[] data = new byte[size];
         while(directBlocks[i] != 0) {
             byte[] fileData1 = volume.read(directBlocks[i] * volume.BLOCK_SIZE, tmpSize > volume.BLOCK_SIZE ? volume.BLOCK_SIZE : tmpSize);
             tmpSize -= volume.BLOCK_SIZE;
             Helper.dumpHexBytes(fileData1);
             i++;
-        }
+        }*/
     }
 
     public void printInodeData() {
 
-        Date d = new Date(creationTime * 1000L);
-        SimpleDateFormat sdf = new SimpleDateFormat("MMM d hh:mm");
-
         System.out.println("[Inode Data]");
         System.out.println("-- Ownership");
         System.out.printf("   - Permissions: %s (0x%02x)\n", getPermissionString(), permissions);
-        System.out.println("   - User ID: " + userID + " (" + (userID == 0 ? "root" : userID == 1000 ? "user" : "unknown") + ")");
-        System.out.println("   - Group ID: " + groupID + " (" + (groupID == 0 ? "root" : groupID == 1000 ? "user" : "unknown") + ")");
+        System.out.println("   - User ID: " + userID + " (" + (userID == 0 ? "root" : userID == 1000 ? "asc" : "unknown") + ")");
+        System.out.println("   - Group ID: " + groupID + " (" + (groupID == 0 ? "root" : groupID == 1000 ? "staff" : "unknown") + ")");
         System.out.println("-- Misc");
         System.out.println("   - Size (Bytes): " + size);
-        System.out.println("   - Creation Time: " + sdf.format(d));
-        d = new Date(modificationTime * 1000L);
-        System.out.println("   - Last Modified: " + sdf.format(d));
-        d = new Date(accessTime * 1000L);
-        System.out.println("   - Last Accessed: " + sdf.format(d));
+        System.out.println("   - Creation Time: " + Helper.toDate(creationTime * 1000L));
+        System.out.println("   - Last Modified: " + Helper.toDate(modificationTime * 1000L));
+        System.out.println("   - Last Accessed: " + Helper.toDate(accessTime * 1000L));
         System.out.println("-- Data");
         System.out.println("   - Hard Links: " + links);
         System.out.println("-- Direct Pointers: ");
@@ -89,8 +95,7 @@ public class Inode {
     public String getPermissionString() {
         String per = "";
 
-        int len = Permissions.PERMISSION_STRINGS.length;
-        for(int i = 0; i < len; i++) {
+        for(int i = 0; i < Permissions.PERMISSION_STRINGS.length; i++) {
             if((permissions & Permissions.PERMISSIONS[i]) == Permissions.PERMISSIONS[i]) {
                 per += Permissions.PERMISSION_STRINGS[i];
             }
@@ -101,6 +106,8 @@ public class Inode {
         return per;
     }
 
+    public boolean isDirectory() { return (permissions & Permissions.DIR) == Permissions.DIR; }
+    public boolean isFile() { return (permissions & Permissions.FILE) == Permissions.FILE; }
 
     public int getPermissions() { return permissions; }
     public int getUserID() { return userID; }

@@ -43,7 +43,7 @@ public class Main {
             System.out.print("scc211@os-module /$ ");
             String next = s.nextLine();
             String[] cmd = next.split(" ");
-            String arg = cmd[1];
+            String arg = cmd.length > 1 ? cmd[1] : "";
             for(int i = 2; i < cmd.length; i++) {
                 arg += " " + cmd[i];
             }

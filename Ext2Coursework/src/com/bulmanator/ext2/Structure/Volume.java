@@ -129,7 +129,6 @@ public class Volume {
             int curRead = length > BLOCK_SIZE ? BLOCK_SIZE : (int)length;
 
             int ptr = getBlockPointer(inode, start + (curIndex * BLOCK_SIZE));
-            if(ptr != 0) System.out.printf("0x%02x\n", ptr);
 
             read(data, ptr,
                         (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
@@ -236,8 +235,8 @@ public class Volume {
             int snglBlkPtr = readNum(inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER), INTEGER) * BLOCK_SIZE;
             ptr = readNum(snglBlkPtr + ((index % indSize) * INTEGER), INTEGER) * BLOCK_SIZE;
 
-            System.out.println("Position: " + position + " -> Double: " + (inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER))
-                    + " -> Single: " + (snglBlkPtr + ((index % indSize) * INTEGER)) + " -> Data: " + ptr);
+           // System.out.println("Position: " + position + " -> Double: " + (inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER))
+            //        + " -> Single: " + (snglBlkPtr + ((index % indSize) * INTEGER)) + " -> Data: " + ptr);
         }
         else if((index - (indSize * indSize) - indSize - 12) < (indSize * indSize * indSize)) {
             if(inode.getTripleIndirectBlock() == 0) return 0;
@@ -246,14 +245,14 @@ public class Volume {
             int trplIndex = index / (indSize * indSize);
             int dblBlkPtr = readNum(inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER), INTEGER) * BLOCK_SIZE;
 
-            int dblIndex = (index % (indSize * indSize)) % indSize;
+            int dblIndex = (index / indSize) % indSize;
             int snglBlkPtr = readNum(dblBlkPtr + (dblIndex * INTEGER), INTEGER) * BLOCK_SIZE;
 
             int dataIndex = (index % indSize);
 
             ptr = readNum(snglBlkPtr + (dataIndex * INTEGER), INTEGER) * BLOCK_SIZE;
-            System.out.println("Position: " + position + " -> Triple: " + (inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER))
-                    + " -> Double: " + (dblBlkPtr + (dblIndex * INTEGER)) + " -> Single: " + (snglBlkPtr + (dataIndex * INTEGER)) + " -> Data: " + ptr);
+           // System.out.println("Position: " + position + " -> Triple: " + (inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER))
+            //        + " -> Double: " + (dblBlkPtr + (dblIndex * INTEGER)) + " -> Single: " + (snglBlkPtr + (dataIndex * INTEGER)) + " -> Data: " + ptr);
         }
         else {
             throw new OutOfMemoryError("Error: File size too big!");

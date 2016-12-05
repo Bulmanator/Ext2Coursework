@@ -1,10 +1,9 @@
 package com.bulmanator.ext2;
 
+import com.bulmanator.ext2.Structure.Directory;
 import com.bulmanator.ext2.Structure.Ext2File;
 import com.bulmanator.ext2.Structure.Volume;
-import com.bulmanator.ext2.Terminal.Interpeter;
 import com.bulmanator.ext2.Utils.Helper;
-import com.bulmanator.ext2.Structure.Inode;
 
 import java.util.Scanner;
 
@@ -27,170 +26,153 @@ public class Main {
             System.exit(-1);
         }
 
-    //    v.printSuperblock();
+        Directory d = new Directory(v, "/");
+        String curPath = "/";
 
-      // Ext2File file = new Ext2File(v, "/files/ind-e");
+      //  Ext2File f = new Ext2File(v, "/files/trpl-ind-e");
 
+       // f.seek(17180403712L);
+       // byte[] buf = f.read(2048);
 
-       //
-       // System.out.println("Size: " + v.BLOCK_SIZE / Volume.INTEGER);
-        Inode ind = v.getInode(1721);
-        ind.printInodeData();
+        //Helper.dumpHexBytes(buf);
 
-        long sTime = System.nanoTime();
-        int[] ptrs = v.getUsedPtrs(ind);
-        long eTime = System.nanoTime();
+        //System.out.printf("%s", new String(buf));
 
-        System.out.println("Time Taken: " + (eTime - sTime));
-        for(int i = 0; i < ptrs.length; i++) {
-            System.out.printf("0x%02x\n", ptrs[i]);
-            byte[] d = v.read(ptrs[i] * v.BLOCK_SIZE, v.BLOCK_SIZE);
-            Helper.dumpHexBytes(d);
-
-        }
-        //byte[] d = v.read(ind.getInderectBlock() * v.BLOCK_SIZE, v.BLOCK_SIZE);
-        //Helper.dumpHexBytes(d);
-
-      //  int[] ptrs = v.getSingleIndirectPtrs(ind.getInderectBlock());
-      //  for(int i = 0; i < ptrs.length; i++) {
-       //     System.out.printf("0x%02x\n", ptrs[i]);
-      //  }
-
-        //long sTime = System.nanoTime();
-      //  readTrplIndBlock(ind.getTripleIndirectBlock());
-       // long eTime = System.nanoTime();
-
-       // System.out.println("Time: " + (eTime - sTime));
-
-       // Inode i = v.getInode(12);
-       // i.printInodeData();
-
-//        byte[] data = v.read(i.getDirectBlocks()[0] * v.BLOCK_SIZE, v.BLOCK_SIZE);
- //       Helper.dumpHexBytes(data);
-
-        //System.out.printf("Direct Block 1: 0x%02x\n", i.getDirectBlocks()[0]);
-       //byte[] d = v.read(i.getDirectBlocks()[0] * v.BLOCK_SIZE, v.BLOCK_SIZE);
-       //Helper.dumpHexBytes(d);
-
-      //  Interpeter interpeter = new Interpeter();
-      //  interpeter.run();
-
-
-      /*  while(true) {
-            System.out.print("user@scc211:/$ ");
+        boolean exit = false;
+        while(!exit) {
+            System.out.print("scc211@os-module /$ ");
             String next = s.nextLine();
-            if(next.equals("ls -l")) {
-                int offset = 0;
-                while(offset != v.BLOCK_SIZE) {
-                    int index = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + offset, 4);
-                    int nameLen = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 6 + offset, 1);
-                    int len = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 4 + offset, 2);
-                    String name = new String(v.read(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 8 + offset, nameLen));
-                    Inode current = v.getInode(index);
+            String[] cmd = next.split(" ");
+            String arg = cmd[1];
+            for(int i = 2; i < cmd.length; i++) {
+                arg += " " + cmd[i];
+            }
 
-                    if(!name.contains(".")) {
-                        System.out.printf("%s %d %d %d %d %s %s\n", current.getPermissionString(),
-                                current.getLinks(), current.getUserID(), current.getGroupID(), current.getSize(),
-                                Helper.toDate(current.getModificationTime() * 1000L), name);
-
+            if(cmd[0].equals("cat") && cmd.length > 1) {
+                Ext2File file = new Ext2File(v, arg);
+                for(long i = 0; i < file.size; i += v.BLOCK_SIZE * 2L) {
+                    byte[] data = file.read(i, v.BLOCK_SIZE * 2L < (file.size - i) ? v.BLOCK_SIZE * 2L : (file.size - i));
+                    boolean valid = false;
+                    for(int j = 0; j < data.length; j++) {
+                        if(data[j] > 9 && data[j] < 127) {
+                            System.out.printf("%c", data[j]);
+                            valid = true;
+                        }
                     }
-                    offset += len;
+                   // if(valid) System.out.printf("Data From: %d\n", i);
                 }
             }
-            else if(next.equals("ls")) {
-                int offset = 0;
-                while(offset != v.BLOCK_SIZE) {
-                    int index = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + offset, 4);
-                    int nameLen = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 6 + offset, 1);
-                    int len = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 4 + offset, 2);
-                    String name = new String(v.read(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 8 + offset, nameLen));
-                    Inode current = v.getInode(index);
+            else if(cmd[0].equals("exit")) exit = true;
+        }
 
-                    System.out.printf("%s ", name);
+      /*  boolean exit = false;
+        while (!exit) {
+            System.out.print("scc211@os-module: " + curPath + "$ ");
+            String next = s.nextLine();
+            String[] cmd = next.split(" ");
 
-                    offset += len;
-                }
-                System.out.println();
-            }
-            else if(next.equals("ls -la")) {
-                int offset = 0;
-                while(offset != v.BLOCK_SIZE) {
-                    int index = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + offset, 4);
-                    int nameLen = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 6 + offset, 1);
-                    int len = v.readNum(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 4 + offset, 2);
-                    String name = new String(v.read(v.getRoot().getDirectBlocks()[0] * v.BLOCK_SIZE + 8 + offset, nameLen));
-                    Inode current = v.getInode(index);
-
-                    System.out.printf("%s %d %d %d %d %s %s\n", current.getPermissionString(),
-                            current.getLinks(), current.getUserID(), current.getGroupID(), current.getSize(),
-                            Helper.toDate(current.getModificationTime() * 1000L), name);
-
-
-                    offset += len;
-                }
-            }
-            else if(next.contains("echo") && next.contains(" ")) {
-                String[] split = next.split(" ");
-                if(split[0].equals("echo")) {
-                    for(int j = 1; j < split.length; j++) {
-                        System.out.print(split[j] + " ");
+            if(cmd[0].equals("cd") && cmd.length > 1) {
+                Directory oldDir = d;
+                String arg = "";
+                for(int i = 1; i < cmd.length; i++) {
+                    if(i == 1) {
+                        arg += cmd[i];
+                    }
+                    else {
+                        arg += " " + cmd[i];
                     }
                 }
-                System.out.println();
+
+                if(arg.charAt(0) != '/') {
+                    if(!curPath.endsWith("/")) {
+                        arg = curPath + "/" + arg;
+                    }
+                    else {
+                        arg = curPath + arg;
+                    }
+                }
+
+                d = new Directory(v, arg);
+
+                if(d.getInode() == null) {
+                    switch (d.getFoundType()) {
+                        case Directory.FILE:
+                            System.out.println("cd: " + cmd[1] + ": Not a directory");
+                            break;
+                        case Directory.NOT_FOUND:
+                            System.out.println("cd: " + cmd[1] + ": No such file or directory");
+                    }
+                    d = oldDir;
+                }
+                else {
+                    if(arg.equals("..")) {
+                        curPath = curPath.substring(0, curPath.lastIndexOf("/"));
+                        if(curPath.equals("")) curPath = "/";
+                    }
+                    else {
+                        curPath = arg;
+                    }
+                }
             }
-            else if(next.equals("exit")) {
-                break;
+            else if(cmd[0].equals("ls") && cmd.length > 1) {
+                switch (cmd[1]) {
+                    case "-l":
+                        d.printLSL(1);
+                        break;
+                    case "-la":
+                        d.printLSL(2);
+                        break;
+                    case "-a":
+                        d.printLS(2);
+                }
+            }
+            else if(cmd[0].equals("ls") && cmd.length == 1) {
+                d.printLS(1);
+            }
+            else if(cmd[0].equals("cat") && cmd.length > 1) {
+                String arg = "";
+                for(int i = 1; i < cmd.length; i++) {
+                    if(i == 1) arg += cmd[i];
+                    else arg += " " + cmd[i];
+                }
+
+                if(arg.charAt(0) != '/') {
+                    if(!curPath.endsWith("/")) {
+                        arg = curPath + "/" + arg;
+                    }
+                    else {
+                        arg = curPath + arg;
+                    }
+                }
+
+                Ext2File file = new Ext2File(v, arg);
+                if(file.getFound() == 0) {
+                    byte[] data = new byte[(int)file.getInode().getSize()];
+
+                   // data = v.getData(file.getInode(), 0L, file.getInode().getSize());
+                    for(int i = 0; i < data.length; i++) {
+                        System.out.printf("0x%02x ", data[i]);
+                        if((i + 1) % 16 == 0) System.out.println();
+                    }
+                }
+                else {
+                    switch (file.getFound()) {
+                        case 1:
+                            System.out.println("cat: " + arg  + ": No such file or directory");
+                            break;
+                        case 2:
+                            System.out.println("cat: " + arg + ": Is a directory");
+                    }
+                }
+            }
+            else if(cmd[0].equals("exit") || cmd[0].equals("quit")) {
+                exit = true;
             }
             else {
-                String[] split = next.split(" ");
-                System.out.println(split[0] + ": command not found");
+                System.out.println(cmd[0] + ": command not found");
             }
         }*/
 
         v.close();
-    }
-
-    long processed = 0;
-    private void readIndBlock(int indPtr) {
-        System.out.println("Ind Ptr: " + indPtr);
-        for(int i = 0; i < (v.BLOCK_SIZE / Volume.INTEGER); i++) {
-            int ptr = v.readNum((indPtr * v.BLOCK_SIZE) + (i * Volume.INTEGER), Volume.INTEGER);
-            if(ptr != 0) {
-                byte[] d = v.read(ptr, v.BLOCK_SIZE);
-                Helper.dumpHexBytes(d);
-                processed += 1;
-            }
-        }
-    }
-
-    private void readDblIndBlock(int dblIndPtr) {
-        System.out.println("Dbl Ptr: " + dblIndPtr);
-        for(int i = 0; i < (v.BLOCK_SIZE / Volume.INTEGER); i++) {
-            int ptr = v.readNum((dblIndPtr * v.BLOCK_SIZE) + (i * Volume.INTEGER), Volume.INTEGER);
-            if(ptr != 0) {
-                readIndBlock(ptr);
-            }
-        }
-    }
-
-    private void readTrplIndBlock(int trplIndPtr) {
-        processed = 0;
-        System.out.println("Trpl Ptr: " + trplIndPtr);
-        for(int i = 0; i < (v.BLOCK_SIZE / Volume.INTEGER); i++) {
-            int ptr = v.readNum((trplIndPtr * v.BLOCK_SIZE) + (i * Volume.INTEGER), Volume.INTEGER);
-            if(ptr != 0) {
-                readDblIndBlock(ptr);
-            }
-        }
-        System.out.println("Processed Pointers: " + processed);
-    }
-
-    private void printDirectory(int i, int len, int nameLen, int type, String name) {
-        System.out.println("Inode: " + i);
-        System.out.println("Length: " + len);
-        System.out.println("Name Length: " + nameLen);
-        System.out.println("File Type: " + type);
-        System.out.println("Directory Name: " + name);
-        System.out.println();
     }
 }

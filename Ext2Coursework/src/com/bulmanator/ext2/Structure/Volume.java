@@ -1,12 +1,8 @@
 package com.bulmanator.ext2.Structure;
 
-import com.bulmanator.ext2.Utils.Helper;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.Vector;
 
 public class Volume {
 
@@ -27,10 +23,11 @@ public class Volume {
 
     public final String VOLUME_NAME;
 
+    private int indSize;
     private RandomAccessFile fileSystem;
 
    // private int inodeTablePtr;
-    private Inode root;
+    private Directory root;
 
     public Volume(String file) throws Exception {
         fileSystem = new RandomAccessFile(new File(file), "r");
@@ -56,8 +53,9 @@ public class Volume {
         // Volume Label
         VOLUME_NAME = new String(read(BLOCK_SIZE + 120L, 16));
 
-        //inodeTablePtr = readInt(2056) * BLOCK_SIZE;
-        root = new Inode(this, getInodeTablePtr(0) + INODE_SIZE);
+        root = new Directory(this, getInode(2));
+
+        indSize = BLOCK_SIZE / INTEGER;
     }
 
     public void printSuperblock() {
@@ -84,7 +82,7 @@ public class Volume {
             return -1L;
         }
     }
-    public Inode getRoot() { return root; }
+    public Directory getRoot() { return root; }
 
     public Inode getInode(int index) {
         int offset = ((index - 1) % INODES_PER_GROUP) * INODE_SIZE;
@@ -104,61 +102,163 @@ public class Volume {
         catch (IOException ex) { ex.printStackTrace(); }
     }
 
-    private int[] getUsedPtrs(int indPtr, int level) {
-        ArrayList<Integer> pointers = new ArrayList<>();
-        if(level == 1) {
-            for(int i = 0; i < BLOCK_SIZE / INTEGER; i++) {
-                int ptr = readNum(indPtr * BLOCK_SIZE + (i * 4), INTEGER);
-                if(ptr != 0) pointers.add(ptr);
+    /**
+     * Pads the data with zeros from offset to length
+     * @param data The byte array to add the zeros to
+     * @param offset The starting position within the array to put zeros into
+     * @param length The number of zeros to add
+     */
+    private void padZero(byte[] data, int offset, int length) {
+        for(int i = 0; i < length; i++) {
+            data[offset + i] = 0x00;
+        }
+    }
+
+
+    public byte[] read(Inode inode, long start, long length) {
+        byte[] data = new byte[(int)length];
+
+        long offset = start % BLOCK_SIZE;
+
+        int totalRead = (BLOCK_SIZE - (int) offset) > length ? (int)length : (BLOCK_SIZE - (int)offset);
+        read(data, getBlockPointer(inode, start) + offset, 0, totalRead);
+        length -= totalRead;
+
+        int curIndex = 1;
+        while (length > 0) {
+            int curRead = length > BLOCK_SIZE ? BLOCK_SIZE : (int)length;
+
+            int ptr = getBlockPointer(inode, start + (curIndex * BLOCK_SIZE));
+            if(ptr != 0) System.out.printf("0x%02x\n", ptr);
+
+            read(data, ptr,
+                        (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
+
+
+            totalRead += curRead;
+            length -= curRead;
+
+            if(totalRead == BLOCK_SIZE) {
+                totalRead = 0;
+                curIndex++;
             }
         }
-        else {
-            for(int i = 0; i < BLOCK_SIZE / INTEGER; i++) {
-                int ptr = readNum(indPtr * BLOCK_SIZE + (i * 4), INTEGER);
+
+        return data;
+    }
+
+    private void read(byte[] b, long start, int offset, int len) {
+        try {
+            if(start == 0) {
+                padZero(b, offset, len);
+            }
+            else {
+                fileSystem.seek(start);
+                fileSystem.read(b, offset, len);
+            }
+        }
+        catch (IOException ex) {
+            ex.printStackTrace();
+            System.err.println("Failed to read!");
+            System.exit(-1);
+        }
+    }
+
+    /*public byte[] getData(Inode inode, long startByte, long size) {
+        byte[] data = new byte[(int)size];
+
+        long tmp = size % BLOCK_SIZE;
+        int aligned = (int) tmp;
+        size -= aligned;
+
+        tmp = (size + aligned) / BLOCK_SIZE;
+        int blockCount = (int)tmp;
+
+        try {
+            int i;
+            for (i = 0; i < blockCount; i++) {
+                boolean pad = true;
+                int ptr = getBlockPointer(inode, i * BLOCK_SIZE);
                 if(ptr != 0) {
-                    int[] tmp = getUsedPtrs(ptr, level - 1);
-                    for (int j = 0; j < tmp.length; j++) {
-                        pointers.add(tmp[j]);
-                    }
+                    fileSystem.seek(ptr);
+                    fileSystem.read(data, (i * BLOCK_SIZE), BLOCK_SIZE);
+                    pad = false;
+                }
+
+                if(pad) padZero(data, (i * BLOCK_SIZE), BLOCK_SIZE);
+            }
+
+            if(aligned != 0) {
+                int ptr = getBlockPointer(inode, i * BLOCK_SIZE);
+                if(ptr != 0) {
+                    fileSystem.seek(ptr);
+                    fileSystem.read(data, (i * BLOCK_SIZE), aligned);
+                }
+                else {
+                    padZero(data, (i * BLOCK_SIZE), aligned);
                 }
             }
         }
-
-        int[] ind = new int[pointers.size()];
-        for(int i = 0; i < ind.length; i++) {
-            ind[i] = pointers.get(i);
+        catch (IOException ex) {
+            ex.printStackTrace();
+            System.exit(-1);
         }
 
-        return ind;
-    }
-    public int[] getUsedPtrs(Inode inode) {
-        ArrayList<Integer> pointers = new ArrayList<>();
+        return data;
+    }*/
 
-        if(inode.getTripleIndirectBlock() != 0) {
-            int[] trplPtrs = getUsedPtrs(inode.getTripleIndirectBlock(), 3);
-            for(int i : trplPtrs) { pointers.add(i); }
-        }
+    public int getBlockPointer(Inode inode, long position) {
+        int ptr;
 
-        if(inode.getDoubleIndirectBlock() != 0) {
-            int[] dblPtrs = getUsedPtrs(inode.getDoubleIndirectBlock(), 2);
-            for(int i : dblPtrs) { pointers.add(i); }
-        }
-        if(inode.getInderectBlock() != 0) {
-            int[] snglPtrs = getUsedPtrs(inode.getInderectBlock(), 1);
-            for(int i : snglPtrs) { pointers.add(i); }
+        int align = (int)(position % BLOCK_SIZE);
+        long tmp = (position - align) / BLOCK_SIZE;
+        int index = (int) tmp;
+
+       // System.out.println("Position: " + position + " Index: " + index);
+
+        if(index < 0) {
+            throw new IllegalArgumentException("Error: Index cannot be < 0");
         }
 
-        for(int i = 0; i < 12; i++) {
-            if(inode.getDirectBlocks()[i] != 0)
-                pointers.add(inode.getDirectBlocks()[i]);
+        if(index < 12) {
+            if(inode.getDirectBlocks()[index] == 0) return 0;
+            ptr = inode.getDirectBlocks()[index] * BLOCK_SIZE;
         }
+        else if((index - 12) < indSize) {
+            if(inode.getIndirectBlock() == 0) return 0;
+            ptr = readNum(inode.getIndirectBlock() * BLOCK_SIZE + ((index - 12) * INTEGER), INTEGER) * BLOCK_SIZE;
+        }
+        else if((index - indSize - 12) < (indSize * indSize)) {
+            if(inode.getDoubleIndirectBlock() == 0) return 0;
+            index = index - indSize - 12;
 
-        // Convert ArrayList to int array;
-        int[] used = new int[pointers.size()];
-        for(int i = 0; i < used.length; i++) {
-            used[i] = pointers.get(i);
+            int dblIndex = index / indSize;
+            int snglBlkPtr = readNum(inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER), INTEGER) * BLOCK_SIZE;
+            ptr = readNum(snglBlkPtr + ((index % indSize) * INTEGER), INTEGER) * BLOCK_SIZE;
+
+            System.out.println("Position: " + position + " -> Double: " + (inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER))
+                    + " -> Single: " + (snglBlkPtr + ((index % indSize) * INTEGER)) + " -> Data: " + ptr);
         }
-        return used;
+        else if((index - (indSize * indSize) - indSize - 12) < (indSize * indSize * indSize)) {
+            if(inode.getTripleIndirectBlock() == 0) return 0;
+            index = index - (indSize * indSize) - indSize - 12;
+
+            int trplIndex = index / (indSize * indSize);
+            int dblBlkPtr = readNum(inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER), INTEGER) * BLOCK_SIZE;
+
+            int dblIndex = (index % (indSize * indSize)) % indSize;
+            int snglBlkPtr = readNum(dblBlkPtr + (dblIndex * INTEGER), INTEGER) * BLOCK_SIZE;
+
+            int dataIndex = (index % indSize);
+
+            ptr = readNum(snglBlkPtr + (dataIndex * INTEGER), INTEGER) * BLOCK_SIZE;
+            System.out.println("Position: " + position + " -> Triple: " + (inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER))
+                    + " -> Double: " + (dblBlkPtr + (dblIndex * INTEGER)) + " -> Single: " + (snglBlkPtr + (dataIndex * INTEGER)) + " -> Data: " + ptr);
+        }
+        else {
+            throw new OutOfMemoryError("Error: File size too big!");
+        }
+        return ptr;
     }
 
     public int readNum(long start, int size) {
@@ -187,6 +287,7 @@ public class Volume {
     }
     public byte[] read(long start, int length) {
         byte[] ret = new byte[length];
+
         try {
             fileSystem.seek(start);
             fileSystem.read(ret);

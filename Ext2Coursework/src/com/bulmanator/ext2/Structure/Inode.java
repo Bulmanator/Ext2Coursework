@@ -3,14 +3,7 @@ package com.bulmanator.ext2.Structure;
 import com.bulmanator.ext2.Utils.Helper;
 import com.bulmanator.ext2.Utils.Permissions;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Vector;
-
 public class Inode {
-
-    // The Volume on which this Inode is stored
-    private Volume volume;
 
     // Ownership
     private int permissions;
@@ -18,7 +11,8 @@ public class Inode {
     private int groupID;
 
     // Misc
-    private int size;
+    private int index;
+    private long size;
     private int creationTime;
     private int modificationTime;
     private int accessTime;
@@ -26,19 +20,18 @@ public class Inode {
     // Data
     private int links;
     private int[] directBlocks;
-    private int inderectBlock;
+    private int indirectBlock;
     private int doubleIndirectBlock;
     private int tripleIndirectBlock;
 
     public Inode(Volume volume, long position) {
 
-        this.volume = volume;
-
         permissions = volume.readNum(position, Volume.SHORT);
         userID = volume.readNum(position + 2, Volume.SHORT);
         groupID = volume.readNum(position + 24, Volume.SHORT);
 
-        size = volume.readNum(position + 4, Volume.INTEGER) | volume.readNum(position + 108, Volume.INTEGER);
+        size = (((long)volume.readNum(position + 108, Volume.INTEGER) << 32) | ((long)volume.readNum(position + 4, Volume.INTEGER) & 0xFFFFFFFFL));
+
         creationTime = volume.readNum(position + 12, Volume.INTEGER);
         modificationTime = volume.readNum(position + 16, Volume.INTEGER);
         accessTime = volume.readNum(position + 8, Volume.INTEGER);
@@ -49,23 +42,9 @@ public class Inode {
             directBlocks[i] = volume.readNum(position + 40L + (i * 4), Volume.INTEGER);
         }
 
-        inderectBlock = volume.readNum(position + 88L, Volume.INTEGER);
+        indirectBlock = volume.readNum(position + 88L, Volume.INTEGER);
         doubleIndirectBlock = volume.readNum(position + 92L, Volume.INTEGER);
         tripleIndirectBlock = volume.readNum(position + 96L, Volume.INTEGER);
-    }
-
-    public void getUsedPointers(Volume volume) {
-
-
-        /* int tmpSize = size;
-        int i = 0;
-        byte[] data = new byte[size];
-        while(directBlocks[i] != 0) {
-            byte[] fileData1 = volume.read(directBlocks[i] * volume.BLOCK_SIZE, tmpSize > volume.BLOCK_SIZE ? volume.BLOCK_SIZE : tmpSize);
-            tmpSize -= volume.BLOCK_SIZE;
-            Helper.dumpHexBytes(fileData1);
-            i++;
-        }*/
     }
 
     public void printInodeData() {
@@ -86,7 +65,7 @@ public class Inode {
         for(int i = 0; i < directBlocks.length; i++) {
             System.out.printf("   - DP%d: 0x%02x\n", i, directBlocks[i]);
         }
-        System.out.printf(" - Single Indirect Pointer: 0x%02x\n", inderectBlock);
+        System.out.printf(" - Single Indirect Pointer: 0x%02x\n", indirectBlock);
         System.out.printf(" - Double Indirect Pointer: 0x%02x\n", doubleIndirectBlock);
         System.out.printf(" - Triple Indirect Pointer: 0x%02x\n", tripleIndirectBlock);
         System.out.println();
@@ -113,14 +92,15 @@ public class Inode {
     public int getUserID() { return userID; }
     public int getGroupID() { return groupID; }
 
-    public int getSize() { return size; }
+    public long getSize() { return size; }
+
     public int getCreationTime() { return creationTime; }
     public int getModificationTime() { return modificationTime; }
     public int getAccessTime() { return accessTime; }
 
     public int getLinks() { return links; }
     public int[] getDirectBlocks() { return directBlocks; }
-    public int getInderectBlock() { return inderectBlock; }
+    public int getIndirectBlock() { return indirectBlock; }
     public int getDoubleIndirectBlock() { return doubleIndirectBlock; }
 
     public int getTripleIndirectBlock() { return tripleIndirectBlock; }

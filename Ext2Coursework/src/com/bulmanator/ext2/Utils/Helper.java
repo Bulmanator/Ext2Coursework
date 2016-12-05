@@ -93,7 +93,17 @@ public class Helper {
 
     public static String toDate(long ms) {
         Date d = new Date(ms);
-        SimpleDateFormat sdf = new SimpleDateFormat("MMM d hh:mm");
+        Date today = new Date();
+
+        SimpleDateFormat sdf;
+        if((today.getTime() - ms) > 31556952000L) {
+            sdf = new SimpleDateFormat("MMM d YYYY");
+        }
+        else {
+            sdf = new SimpleDateFormat("MMM d hh:mm");
+        }
+
+
         return sdf.format(d);
     }
 

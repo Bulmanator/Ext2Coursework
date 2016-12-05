@@ -15,6 +15,7 @@ public class DirectoryEntry {
     public static final int SOCKET = 6;
     public static final int SYM_LINK = 7;
 
+    private int inodeIndex;
     private Inode inode;
     private int length;
     private int nameLength;
@@ -22,13 +23,14 @@ public class DirectoryEntry {
     private String name;
 
     public DirectoryEntry(Volume v, long position) {
-        inode = v.getInode(v.readNum(position, Volume.INTEGER));
+        inode = v.getInode(inodeIndex = v.readNum(position, Volume.INTEGER));
         length = v.readNum(position + 4, Volume.SHORT);
         nameLength = v.readNum(position + 6, Volume.BYTE);
         type = v.readNum(position + 7, Volume.BYTE);
         name = new String(v.read(position + 8, nameLength));
     }
 
+    public int getInodeIndex() { return inodeIndex;}
     public Inode getInode() { return inode; }
     public int getLength() { return length; }
     public int getNameLength() { return nameLength; }

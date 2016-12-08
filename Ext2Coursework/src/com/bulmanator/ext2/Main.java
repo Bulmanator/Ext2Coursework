@@ -14,7 +14,7 @@ public class Main {
 
     private void run() {
         volume = null;
-        try { volume = new Volume("resources/ext2fs"); }
+        try { volume = new Volume("resources/lite"); }
         catch (Exception e) {
             e.printStackTrace();
             System.err.println("Error: Failed to create File System!");

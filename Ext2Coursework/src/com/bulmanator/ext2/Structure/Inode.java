@@ -62,9 +62,9 @@ public class Inode {
         System.out.println("   - Group ID: " + groupID + " (" + (groupID == 0 ? "root" : groupID == 1000 ? "staff" : "unknown") + ")");
         System.out.println("-- Misc");
         System.out.println("   - Size (Bytes): " + size);
-        System.out.println("   - Creation Time: " + Helper.toDate(creationTime * 1000L));
-        System.out.println("   - Last Modified: " + Helper.toDate(modificationTime * 1000L));
-        System.out.println("   - Last Accessed: " + Helper.toDate(accessTime * 1000L));
+        System.out.println("   - Creation Time: " + Helper.toDate(creationTime * 1000L) + " (" + creationTime + ")");
+        System.out.println("   - Last Modified: " + Helper.toDate(modificationTime * 1000L) + " (" + modificationTime + ")");
+        System.out.println("   - Last Accessed: " + Helper.toDate(accessTime * 1000L) + " (" + accessTime + ")");
         System.out.println("-- Data");
         System.out.println("   - Hard Links: " + links);
         System.out.println("-- Direct Pointers: ");

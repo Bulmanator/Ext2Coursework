@@ -31,16 +31,21 @@ public class Permissions {
     /** User execute bit */
     public static final int USR_EXE = 0x0040;
 
-    // Group Permissions
+    /** Group read bit */
     public static final int GRP_READ = 0x0020;
+    /** Group write bit */
     public static final int GRP_WRITE = 0x0010;
+    /** Group execute bit */
     public static final int GRP_EXE = 0x0008;
 
-    // Other Permissions
+    /** Other read bit */
     public static final int OTHR_READ = 0x0004;
+    /** Other write bit */
     public static final int OTHR_WRITE = 0x0002;
+    /** Other execute bit */
     public static final int OTHR_EXE = 0x0001;
 
+    /** An array to hold all of the permission bits for easy indexing */
     public static final int[] PERMISSIONS = {
             SOCKET, SYM_LINK, FILE, BLK_DEV, DIR, CHR_DEV, FIFO,
             SET_UID, SET_GID, STICKY,
@@ -49,6 +54,7 @@ public class Permissions {
             OTHR_READ, OTHR_WRITE, OTHR_EXE
     };
 
+    /** A string array which correspond to the bits in the {@link Permissions#PERMISSIONS} array */
     public static final String[] PERMISSION_STRINGS = {
             "s", "l", "-", "b", "d", "c", "p",
             "", "", "",

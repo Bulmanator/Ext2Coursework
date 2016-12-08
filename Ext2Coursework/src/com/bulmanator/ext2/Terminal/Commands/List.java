@@ -19,7 +19,7 @@ public class List implements Command {
         Directory dir = volume.getCurrentDir();
         switch (args) {
             case "l":
-                System.out.println("total: " + dir.getEntryCount());
+                System.out.println("total: " + (dir.getEntryCount() - 2));
                 for (int i = 0; i < dir.getEntryCount(); i++) {
                     if(!dir.getEntry(i).getName().contains(".")) {
                         printl(dir.getEntry(i));

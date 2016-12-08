@@ -122,16 +122,37 @@ public class Volume {
         long offset = start % BLOCK_SIZE;
 
         int totalRead = (BLOCK_SIZE - (int) offset) > length ? (int)length : (BLOCK_SIZE - (int)offset);
-        read(data, getBlockPointer(inode, start) + offset, 0, totalRead);
+
+        int ptr = getBlockPointer(inode, start) + (int)offset;
+        if(ptr == 0) {
+            padZero(data, 0, totalRead);
+        }
+        else {
+            try {
+                fileSystem.seek(ptr);
+                fileSystem.read(data, 0, totalRead);
+            }
+            catch (IOException ex) { ex.printStackTrace(); }
+        }
+
         length -= totalRead;
 
         int curIndex = 1;
         while (length > 0) {
             int curRead = length > BLOCK_SIZE ? BLOCK_SIZE : (int)length;
 
-            int ptr = getBlockPointer(inode, start + (curIndex * BLOCK_SIZE));
-            read(data, ptr, (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
+            ptr = getBlockPointer(inode, start + (curIndex * BLOCK_SIZE));
 
+            if(ptr == 0) {
+                padZero(data, (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
+            }
+            else {
+                try {
+                    fileSystem.seek(ptr);
+                    fileSystem.read(data, (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
+                }
+                catch (IOException ex) { ex.printStackTrace(); }
+            }
 
             totalRead += curRead;
             length -= curRead;
@@ -145,43 +166,39 @@ public class Volume {
         return data;
     }
 
-    private void read(byte[] b, long start, int offset, int len) {
-        try {
-            if(start == 0) {
-                padZero(b, offset, len);
-            }
-            else {
-                fileSystem.seek(start);
-                fileSystem.read(b, offset, len);
-            }
-        }
-        catch (IOException ex) {
-            ex.printStackTrace();
-            System.err.println("Failed to read!");
-            System.exit(-1);
-        }
-    }
-
+    /**
+     * This will convert an inode and a position within a file into the correct data pointer whether or not it is indirect
+     * @param inode The inode which contains the data pointers
+     * @param position The position within the file
+     * @return The pointer
+     */
     public int getBlockPointer(Inode inode, long position) {
         int ptr;
 
+        // This will align the position in the file to the beginning of its block
         int align = (int)(position % BLOCK_SIZE);
         long tmp = (position - align) / BLOCK_SIZE;
         int index = (int) tmp;
 
         if(index < 0) {
+            // Index cannot less than 0 so throw exception
             throw new IllegalArgumentException("Error: Index cannot be < 0");
         }
 
+        // If the index is less than 12 then use the direct block pointers
         if(index < 12) {
             if(inode.getDirectBlocks()[index] == 0) return 0;
             ptr = inode.getDirectBlocks()[index] * BLOCK_SIZE;
         }
+        // If the index is [12, 267) then its in the indirect block pointer
+        // Find the index in the indirect block and return the data pointer
         else if((index - 12) < indSize) {
             if(inode.getIndirectBlock() == 0) return 0;
             ptr = ByteBuffer.wrap(read(inode.getIndirectBlock() * BLOCK_SIZE
                     + ((index - 12) * INTEGER), INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
         }
+        // If the index is [267, 65535) then it is using the double indirect block pointer
+        // Find the correct indexes for both layers of indirection and return the data pointer
         else if((index - indSize - 12) < (indSize * indSize)) {
             if(inode.getDoubleIndirectBlock() == 0) return 0;
             index = index - indSize - 12;
@@ -193,6 +210,7 @@ public class Volume {
             ptr = ByteBuffer.wrap(read(snglBlkPtr + ((index % indSize) * INTEGER),
                     INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
         }
+        // If the index is [65536, 16777216)
         else if((index - (indSize * indSize) - indSize - 12) < (indSize * indSize * indSize)) {
             if(inode.getTripleIndirectBlock() == 0) return 0;
             index = index - (indSize * indSize) - indSize - 12;
@@ -216,12 +234,6 @@ public class Volume {
         return ptr;
     }
 
-    public Directory getCurrentDir() { return current; }
-    public void setCurrentDir(Directory dir) {
-        if(dir.getFoundType() != 0) return;
-        current = dir;
-    }
-
     public byte[] read(long start, int length) {
         byte[] ret = new byte[length];
 
@@ -232,6 +244,12 @@ public class Volume {
         catch (Exception ex) { ex.printStackTrace(); }
 
         return ret;
+    }
+
+    public Directory getCurrentDir() { return current; }
+    public void setCurrentDir(Directory dir) {
+        if(dir.getFoundType() != 0) return;
+        current = dir;
     }
 
     public void close() {

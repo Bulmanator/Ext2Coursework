@@ -6,91 +6,51 @@ import java.util.Date;
 
 public class Helper {
 
+    /**
+     * Will print a byte array printed out in formatted hexadecimal and ascii representation (if present)
+     * @param bytes The byte array to dump
+     */
     public static void dumpHexBytes(byte[] bytes) {
-        int remain = bytes.length % 16;
-        int len = (bytes.length - remain) / 16;
-        for(int i = 0; i < len; i++) {
-            if(i + 1 < 10) {
-                System.out.printf((i + 1) + ".   ");
-            }
-            else if(i + 1 < 100) {
-                System.out.printf((i + 1) + ".  ");
+        int length = bytes.length + (16 - (bytes.length % 16));
+
+        for(int i = 0; i < length; i++) {
+
+            if(i < bytes.length) {
+                System.out.printf("%02x", bytes[i]);
             }
             else {
-                System.out.printf((i + 1) + ". ");
+                System.out.print("XX");
             }
-            for (int j = 0; j < 2; j++) {
-                for(int k = 0; k < 16; k++) {
-                    byte current = bytes[(i * 16) + k];
-                    if(j == 0) {
-                        if(k % 2 != 0) {
-                            System.out.format("%02x ", current);
+
+            if((i + 1) % 2 == 0) System.out.print(" ");
+            if((i + 1) % 8 == 0) System.out.print("| ");
+
+            if((i + 1) % 16 == 0) {
+                for(int j = i - 15; j <= i; j++) {
+                    if(j < bytes.length) {
+                        if (bytes[j] > 31 && bytes[j] < 127) {
+                            System.out.printf("%c", bytes[j]);
+                        } else {
+                            System.out.print("-");
                         }
-                        else {
-                            System.out.format("%02x", current);
-                        }
-                        if ((k + 1) % 8 == 0) System.out.print("| ");
                     }
                     else {
-                        if(current > 31 && current < 127) {
-                            System.out.printf("%c", current);
-                        }
-                        else {
-                            System.out.printf("-");
-                        }
-                        if ((k + 1) % 8 == 0) System.out.print(" | ");
+                        System.out.print("X");
                     }
+
+                    if((j + 1) % 8 == 0) System.out.print(" | ");
                 }
-            }
-            System.out.println();
-        }
-
-        if(remain > 0) {
-            if (len + 1 < 10) {
-                System.out.print((len + 1) + ".   ");
-            } else if (len + 1 < 100) {
-                System.out.print((len + 1) + ".  ");
-            } else {
-                System.out.print((len + 1) + ". ");
-            }
-
-            int loop = len + 16;
-
-            for (int j = 0; j < 2; j++) {
-                for (int i = len; i < loop; i++) {
-                    if (j == 0) {
-                        if (i < len + remain) {
-                            if (i % 2 == 0) {
-                                System.out.printf("%02x ", bytes[i]);
-                            } else {
-                                System.out.printf("%02x", bytes[i]);
-                            }
-                        } else {
-                            if (i % 2 == 0) {
-                                System.out.print("XX ");
-                            } else {
-                                System.out.print("XX");
-                            }
-                        }
-                        if (((i + 1) - len) % 8 == 0) System.out.print("| ");
-                    } else {
-                        if (i < len + remain) {
-                            if (bytes[i] > 31 && bytes[i] < 127) {
-                                System.out.printf("%c", bytes[i]);
-                            } else {
-                                System.out.print("-");
-                            }
-                        } else {
-                            System.out.print("X");
-                        }
-                        if (((i + 1) - len) % 8 == 0) System.out.print(" | ");
-                    }
-                }
+                System.out.println();
             }
         }
-        System.out.println();
     }
 
+
+    /**
+     * Converts a time in milliseconds to a date as a formatted string
+     * @param ms The time, in milliseconds
+     * @return The formatted date
+     */
     public static String toDate(long ms) {
         Date d = new Date(ms);
         Date today = new Date();

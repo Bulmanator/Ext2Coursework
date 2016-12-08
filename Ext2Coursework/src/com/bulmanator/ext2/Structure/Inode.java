@@ -3,12 +3,15 @@ package com.bulmanator.ext2.Structure;
 import com.bulmanator.ext2.Utils.Helper;
 import com.bulmanator.ext2.Utils.Permissions;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 public class Inode {
 
     // Ownership
-    private int permissions;
-    private int userID;
-    private int groupID;
+    private short permissions;
+    private short userID;
+    private short groupID;
 
     // Misc
     private int index;
@@ -18,7 +21,7 @@ public class Inode {
     private int accessTime;
 
     // Data
-    private int links;
+    private short links;
     private int[] directBlocks;
     private int indirectBlock;
     private int doubleIndirectBlock;
@@ -26,25 +29,28 @@ public class Inode {
 
     public Inode(Volume volume, long position) {
 
-        permissions = volume.readNum(position, Volume.SHORT);
-        userID = volume.readNum(position + 2, Volume.SHORT);
-        groupID = volume.readNum(position + 24, Volume.SHORT);
+        ByteBuffer buffer = ByteBuffer.wrap(volume.read(position, volume.INODE_SIZE));
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
 
-        size = (((long)volume.readNum(position + 108, Volume.INTEGER) << 32) | ((long)volume.readNum(position + 4, Volume.INTEGER) & 0xFFFFFFFFL));
+        permissions = buffer.getShort(0);
+        userID = buffer.getShort(2);
+        groupID = buffer.getShort(24);
 
-        creationTime = volume.readNum(position + 12, Volume.INTEGER);
-        modificationTime = volume.readNum(position + 16, Volume.INTEGER);
-        accessTime = volume.readNum(position + 8, Volume.INTEGER);
+        size = (((long)buffer.getInt(108) << 32) | ((long)buffer.getInt(4) & 0xFFFFFFFFL));
 
-        links = volume.readNum(position + 26, Volume.SHORT);
+        creationTime = buffer.getInt(12);
+        modificationTime = buffer.getInt(16);
+        accessTime = buffer.getInt(8);
+
+        links = buffer.getShort(26);
         directBlocks = new int[12];
         for(int i = 0; i < 12; i++) {
-            directBlocks[i] = volume.readNum(position + 40L + (i * 4), Volume.INTEGER);
+            directBlocks[i] = buffer.getInt(40 + (i * 4));
         }
 
-        indirectBlock = volume.readNum(position + 88L, Volume.INTEGER);
-        doubleIndirectBlock = volume.readNum(position + 92L, Volume.INTEGER);
-        tripleIndirectBlock = volume.readNum(position + 96L, Volume.INTEGER);
+        indirectBlock = buffer.getInt(88);
+        doubleIndirectBlock = buffer.getInt(92);
+        tripleIndirectBlock = buffer.getInt(96);
     }
 
     public void printInodeData() {

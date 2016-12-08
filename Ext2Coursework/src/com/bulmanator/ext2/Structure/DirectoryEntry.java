@@ -1,19 +1,9 @@
 package com.bulmanator.ext2.Structure;
 
-public class DirectoryEntry {
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
-    /** Unknown Directory Entry */
-    public static final int UNKNOWN = 0;
-    /** Regular File Directory Entry */
-    public static final int FILE = 1;
-    /** Directory Directory Entry */
-    public static final int DIRECTORY = 2;
-    /** Character Device Directory Entry */
-    public static final int CHR_DEVICE = 3;
-    public static final int BLK_DEVICE = 4;
-    public static final int FIFO = 5;
-    public static final int SOCKET = 6;
-    public static final int SYM_LINK = 7;
+public class DirectoryEntry {
 
     private int inodeIndex;
     private Inode inode;
@@ -22,12 +12,14 @@ public class DirectoryEntry {
     private int type;
     private String name;
 
-    public DirectoryEntry(Volume v, long position) {
-        inode = v.getInode(inodeIndex = v.readNum(position, Volume.INTEGER));
-        length = v.readNum(position + 4, Volume.SHORT);
-        nameLength = v.readNum(position + 6, Volume.BYTE);
-        type = v.readNum(position + 7, Volume.BYTE);
-        name = new String(v.read(position + 8, nameLength));
+    public DirectoryEntry(Volume volume, long position) {
+        ByteBuffer buffer = ByteBuffer.wrap(volume.read(position, volume.BLOCK_SIZE)).order(ByteOrder.LITTLE_ENDIAN);
+
+        inode = volume.getInode(inodeIndex = buffer.getInt(0));
+        length = buffer.getShort(4);
+        nameLength = buffer.get(6);
+        type = buffer.get(7);
+        name = new String(volume.read(position + 8, nameLength));
     }
 
     public int getInodeIndex() { return inodeIndex;}

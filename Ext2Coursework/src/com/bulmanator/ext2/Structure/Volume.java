@@ -3,6 +3,8 @@ package com.bulmanator.ext2.Structure;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class Volume {
 
@@ -19,41 +21,50 @@ public class Volume {
     public final int BLOCKS_PER_GROUP;
     public final int INODES_PER_GROUP;
 
-    public final int SIGNATURE;
+    public final short SIGNATURE;
 
     public final String VOLUME_NAME;
 
     private int indSize;
     private RandomAccessFile fileSystem;
 
-   // private int inodeTablePtr;
-    private Directory root;
+    private Directory current;
 
     public Volume(String file) throws Exception {
         fileSystem = new RandomAccessFile(new File(file), "r");
 
+        fileSystem.seek(1024);
+        byte[] data = new byte[1024];
+        fileSystem.read(data);
+
+        ByteBuffer buf = ByteBuffer.wrap(data);
+        buf.order(ByteOrder.nativeOrder());
+
         // Block Size
-        BLOCK_SIZE = 1024 * (int)(Math.pow(2, readNum(1048L, INTEGER)));
+        BLOCK_SIZE = 1024 * (int)(Math.pow(2, buf.getInt(24)));
         // Inode Size
-        INODE_SIZE = readNum(BLOCK_SIZE + 88L, INTEGER);
+        INODE_SIZE = buf.getInt(88);
 
         // Inode Count
-        INODE_COUNT = readNum(BLOCK_SIZE, INTEGER);
+        INODE_COUNT = buf.getInt(0);
         // Block Count
-        BLOCK_COUNT = readNum(BLOCK_SIZE + 4L, INTEGER);
+        BLOCK_COUNT = buf.getInt(4);
 
         // Blocks per Group
-        BLOCKS_PER_GROUP = readNum(BLOCK_SIZE + 32L, INTEGER);
+        BLOCKS_PER_GROUP = buf.getInt(32);
         // Inodes per Group
-        INODES_PER_GROUP = readNum(BLOCK_SIZE + 40L, INTEGER);
+        INODES_PER_GROUP = buf.getInt(40);
 
         // Ext2 Signature
-        SIGNATURE = readNum(BLOCK_SIZE + 56, INTEGER);
+        SIGNATURE = buf.getShort(56);
 
         // Volume Label
-        VOLUME_NAME = new String(read(BLOCK_SIZE + 120L, 16));
+        byte[] buffer = new byte[16];
+        buf.position(120);
+        buf.get(buffer);
+        VOLUME_NAME = new String(buffer);
 
-        root = new Directory(this, getInode(2));
+        current = new Directory(this, getInode(2));
 
         indSize = BLOCK_SIZE / INTEGER;
     }
@@ -75,15 +86,6 @@ public class Volume {
         System.out.printf(" - Signature: 0x%02X\n\n", SIGNATURE);
     }
 
-    public long getPosition() {
-        try { return fileSystem.getFilePointer(); }
-        catch (IOException ex) {
-            ex.printStackTrace();
-            return -1L;
-        }
-    }
-    public Directory getRoot() { return root; }
-
     public Inode getInode(int index) {
         int offset = ((index - 1) % INODES_PER_GROUP) * INODE_SIZE;
         offset += getInodeTablePtr((index - 1) / INODES_PER_GROUP);
@@ -91,10 +93,9 @@ public class Volume {
         return new Inode(this, offset);
     }
     public int getInodeTablePtr(int group) {
-        int offset = BLOCK_SIZE + (32 * group);
-        offset += BLOCK_SIZE;
+        int offset = 2 * BLOCK_SIZE + (32 * group);
         offset += 8;
-        return readNum(offset, 4) * BLOCK_SIZE;
+        return ByteBuffer.wrap(read(offset, 4)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
     }
 
     public void seek(long position) {
@@ -129,9 +130,7 @@ public class Volume {
             int curRead = length > BLOCK_SIZE ? BLOCK_SIZE : (int)length;
 
             int ptr = getBlockPointer(inode, start + (curIndex * BLOCK_SIZE));
-
-            read(data, ptr,
-                        (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
+            read(data, ptr, (BLOCK_SIZE - (int) offset) + ((curIndex - 1) * BLOCK_SIZE), curRead);
 
 
             totalRead += curRead;
@@ -163,57 +162,12 @@ public class Volume {
         }
     }
 
-    /*public byte[] getData(Inode inode, long startByte, long size) {
-        byte[] data = new byte[(int)size];
-
-        long tmp = size % BLOCK_SIZE;
-        int aligned = (int) tmp;
-        size -= aligned;
-
-        tmp = (size + aligned) / BLOCK_SIZE;
-        int blockCount = (int)tmp;
-
-        try {
-            int i;
-            for (i = 0; i < blockCount; i++) {
-                boolean pad = true;
-                int ptr = getBlockPointer(inode, i * BLOCK_SIZE);
-                if(ptr != 0) {
-                    fileSystem.seek(ptr);
-                    fileSystem.read(data, (i * BLOCK_SIZE), BLOCK_SIZE);
-                    pad = false;
-                }
-
-                if(pad) padZero(data, (i * BLOCK_SIZE), BLOCK_SIZE);
-            }
-
-            if(aligned != 0) {
-                int ptr = getBlockPointer(inode, i * BLOCK_SIZE);
-                if(ptr != 0) {
-                    fileSystem.seek(ptr);
-                    fileSystem.read(data, (i * BLOCK_SIZE), aligned);
-                }
-                else {
-                    padZero(data, (i * BLOCK_SIZE), aligned);
-                }
-            }
-        }
-        catch (IOException ex) {
-            ex.printStackTrace();
-            System.exit(-1);
-        }
-
-        return data;
-    }*/
-
     public int getBlockPointer(Inode inode, long position) {
         int ptr;
 
         int align = (int)(position % BLOCK_SIZE);
         long tmp = (position - align) / BLOCK_SIZE;
         int index = (int) tmp;
-
-       // System.out.println("Position: " + position + " Index: " + index);
 
         if(index < 0) {
             throw new IllegalArgumentException("Error: Index cannot be < 0");
@@ -225,34 +179,36 @@ public class Volume {
         }
         else if((index - 12) < indSize) {
             if(inode.getIndirectBlock() == 0) return 0;
-            ptr = readNum(inode.getIndirectBlock() * BLOCK_SIZE + ((index - 12) * INTEGER), INTEGER) * BLOCK_SIZE;
+            ptr = ByteBuffer.wrap(read(inode.getIndirectBlock() * BLOCK_SIZE
+                    + ((index - 12) * INTEGER), INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
         }
         else if((index - indSize - 12) < (indSize * indSize)) {
             if(inode.getDoubleIndirectBlock() == 0) return 0;
             index = index - indSize - 12;
 
             int dblIndex = index / indSize;
-            int snglBlkPtr = readNum(inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER), INTEGER) * BLOCK_SIZE;
-            ptr = readNum(snglBlkPtr + ((index % indSize) * INTEGER), INTEGER) * BLOCK_SIZE;
+            int snglBlkPtr = ByteBuffer.wrap(read(inode.getDoubleIndirectBlock()
+                    * BLOCK_SIZE + (dblIndex * INTEGER), INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
 
-           // System.out.println("Position: " + position + " -> Double: " + (inode.getDoubleIndirectBlock() * BLOCK_SIZE + (dblIndex * INTEGER))
-            //        + " -> Single: " + (snglBlkPtr + ((index % indSize) * INTEGER)) + " -> Data: " + ptr);
+            ptr = ByteBuffer.wrap(read(snglBlkPtr + ((index % indSize) * INTEGER),
+                    INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
         }
         else if((index - (indSize * indSize) - indSize - 12) < (indSize * indSize * indSize)) {
             if(inode.getTripleIndirectBlock() == 0) return 0;
             index = index - (indSize * indSize) - indSize - 12;
 
             int trplIndex = index / (indSize * indSize);
-            int dblBlkPtr = readNum(inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER), INTEGER) * BLOCK_SIZE;
+            int dblBlkPtr = ByteBuffer.wrap(read(inode.getTripleIndirectBlock()
+                    * BLOCK_SIZE + (trplIndex * INTEGER), INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
 
             int dblIndex = (index / indSize) % indSize;
-            int snglBlkPtr = readNum(dblBlkPtr + (dblIndex * INTEGER), INTEGER) * BLOCK_SIZE;
+            int snglBlkPtr = ByteBuffer.wrap(read(dblBlkPtr +
+                    (dblIndex * INTEGER), INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
 
             int dataIndex = (index % indSize);
 
-            ptr = readNum(snglBlkPtr + (dataIndex * INTEGER), INTEGER) * BLOCK_SIZE;
-           // System.out.println("Position: " + position + " -> Triple: " + (inode.getTripleIndirectBlock() * BLOCK_SIZE + (trplIndex * INTEGER))
-            //        + " -> Double: " + (dblBlkPtr + (dblIndex * INTEGER)) + " -> Single: " + (snglBlkPtr + (dataIndex * INTEGER)) + " -> Data: " + ptr);
+            ptr = ByteBuffer.wrap(read(snglBlkPtr + (dataIndex * INTEGER),
+                    INTEGER)).order(ByteOrder.LITTLE_ENDIAN).getInt() * BLOCK_SIZE;
         }
         else {
             throw new OutOfMemoryError("Error: File size too big!");
@@ -260,30 +216,12 @@ public class Volume {
         return ptr;
     }
 
-    public int readNum(long start, int size) {
-        int result = -1;
-        try {
-            fileSystem.seek(start);
-            switch (size) {
-                case BYTE:
-                    result = fileSystem.readByte() & 0x000000FF;
-                    break;
-                case SHORT:
-                    result = Short.reverseBytes(fileSystem.readShort()) & 0x0000FFFF;
-                    break;
-                case INTEGER:
-                    result = Integer.reverseBytes(fileSystem.readInt());
-                    break;
-                default:
-                    System.err.println("Error: Unknown Byte size \"" + size + "\"");
-            }
-        }
-        catch(IOException ex) {
-            ex.printStackTrace();
-        }
-
-        return result;
+    public Directory getCurrentDir() { return current; }
+    public void setCurrentDir(Directory dir) {
+        if(dir.getFoundType() != 0) return;
+        current = dir;
     }
+
     public byte[] read(long start, int length) {
         byte[] ret = new byte[length];
 
@@ -297,12 +235,8 @@ public class Volume {
     }
 
     public void close() {
-        try {
-            fileSystem.close();
-        }
-        catch (IOException ex) {
-            ex.printStackTrace();
-        }
+        try { fileSystem.close(); }
+        catch (IOException ex) { ex.printStackTrace(); }
     }
 }
 

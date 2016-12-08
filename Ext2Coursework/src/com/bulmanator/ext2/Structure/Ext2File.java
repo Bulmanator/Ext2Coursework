@@ -1,6 +1,7 @@
 package com.bulmanator.ext2.Structure;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 
 public class Ext2File {
 
@@ -15,7 +16,7 @@ public class Ext2File {
     public Ext2File(Volume volume, String path) {
         this.volume = volume;
         String[] directories = path.substring(1).split("/");
-        Directory curDir = volume.getRoot();
+        Directory curDir = volume.getCurrentDir();
 
         int curPath = 0;
         boolean fileFound = false, treeEnd = false;
@@ -42,7 +43,9 @@ public class Ext2File {
             }
         }
 
-        if(treeEnd) found = 1;
+        if(treeEnd) {
+            found = 1;
+        }
         else  found = 0;
 
         position = 0;
@@ -57,25 +60,22 @@ public class Ext2File {
     public void seek(long position) { this.position = position; }
 
     public byte[] read(long start, long length) {
-        try {
-            if (found != 0) throw new FileNotFoundException("Error: Non-existent file!");
-        } catch (FileNotFoundException ex) {
-            ex.printStackTrace();
-            System.exit(-1);
-        }
-
         seek(start);
-
         return read(length);
     }
 
     public byte[] read(long length) {
         try {
-            if (found != 0) throw new FileNotFoundException("Error: Non-existent file!");
-        } catch (FileNotFoundException ex) {
+            if (found != 0)
+                throw new FileNotFoundException("Error: Non-existent file!");
+            else if(position >= size)
+                throw new IOException("Error: Cannot read from outside of the file bounds (" + position + " >= " + size + ")");
+        }
+        catch (IOException ex) {
             ex.printStackTrace();
             System.exit(-1);
         }
+
 
         long correct = (inode.getSize() - position < length) ? (inode.getSize() - position) : length;
         return volume.read(inode, position, correct);

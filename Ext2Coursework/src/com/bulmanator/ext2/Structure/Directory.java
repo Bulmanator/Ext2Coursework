@@ -1,7 +1,5 @@
 package com.bulmanator.ext2.Structure;
 
-import com.bulmanator.ext2.Utils.Helper;
-
 import java.util.Vector;
 
 public class Directory {
@@ -23,17 +21,18 @@ public class Directory {
      */
     public Directory(Volume volume, String path) {
         this.path = path;
-        String[] directories = path.substring(1).split("/");
-        Directory curDir = volume.getRoot();
 
-        if(directories[0].equals("")) {
-            entries = new DirectoryEntry[curDir.getEntryCount()];
-            for(int i = 0; i < entries.length; i++) {
-                entries[i] = curDir.getEntry(i);
-            }
+        // If the path is root then load the 2nd Inode
+        if(path.equals("/")) {
+            inode = volume.getInode(2);
             foundType = 0;
+            initDirEntries(volume);
             return;
         }
+
+        String[] directories = path.startsWith("/") ? path.substring(1).split("/") : path.split("/");
+
+        Directory curDir = volume.getCurrentDir();
 
         int curPath = 0;
         boolean fileFound = false, treeEnd = false;
@@ -46,7 +45,7 @@ public class Directory {
                         inode = curDir.getEntry(i).getInode();
                        if(!inode.isDirectory()) {
                            inode = null;
-                           foundType = 2;
+                           foundType = FILE;
                            return;
                        }
                     }
@@ -62,10 +61,11 @@ public class Directory {
 
         if(fileFound) {
             initDirEntries(volume);
-            foundType = 0;
+            foundType = FOUND;
         }
         else {
-            foundType = 1;
+            inode = null;
+            foundType = NOT_FOUND;
         }
     }
 
@@ -77,15 +77,17 @@ public class Directory {
     public Directory(Volume volume, Inode inode) {
         this.inode = inode;
         if(!inode.isDirectory()) {
-            System.err.println("Directory: Not a directory");
+            foundType = FILE;
             return;
         }
-
-        if(inode.getSize() >= Integer.MAX_VALUE) throw new OutOfMemoryError("Error: Directory Size too big!");
 
         initDirEntries(volume);
     }
 
+    /**
+     * Initialises all of the directory entries for the specified Inode
+     * @param volume
+     */
     private void initDirEntries(Volume volume) {
         Vector<DirectoryEntry> tmp = new Vector<>();
 
@@ -125,53 +127,23 @@ public class Directory {
      * @return An integer representing if the directory was found or not
      */
     public int getFoundType() { return foundType; }
+
+    /**
+     * Gets the inode corresponding to the directory
+     * @return The inode
+     */
     public Inode getInode() { return inode; }
+
+    /**
+     * Gets a single directory entry from the directory
+     * @param index The index corresponding to the entry needed
+     * @return The entry referenced
+     */
     public DirectoryEntry getEntry(int index) { return entries[index]; }
+
+    /**
+     * Gets the number of directory entries for the directory
+     * @return The number of entries
+     */
     public int getEntryCount() { return entries.length; }
-
-    public void printLS(int type) {
-        int lineLen = 0;
-        boolean newLine = false;
-        for(int i = 0; i < entries.length; i++) {
-            if(entries[i].getName().contains(".") && type != 2) continue;
-
-            System.out.print(entries[i].getName() + " ");
-            lineLen += entries[i].getNameLength() + 1;
-            if(lineLen >= 70) {
-                System.out.println();
-                lineLen = 0;
-                newLine = true;
-            }
-        }
-        if(newLine) System.out.println();
-    }
-    public void printLSL(int type) {
-        int lnSize = -1, lnUID = -1, lnGID = -1, lnLnk = -1;
-        for(int i = 0; i < entries.length; i++) {
-            lnSize = Math.max(String.valueOf(entries[i].getInode().getSize()).length(), lnSize);
-            lnUID = Math.max(entries[i].getInode().getUserID() == 0 ? "root".length() : "scc211".length(), lnUID);
-            lnGID = Math.max(entries[i].getInode().getGroupID() == 0 ? "root".length() : "users".length(), lnGID);
-            lnLnk = Math.max(String.valueOf(entries[i].getInode().getLinks()).length(), lnLnk);
-        }
-
-        for(int i = 0; i < entries.length; i++) {
-            if(entries[i].getName().contains(".") && type != 2) continue;
-            String size = "", uid = "", gid = "", lnk = "";
-            Inode cur = entries[i].getInode();
-            for(int j = 0; j < (lnSize - String.valueOf(cur.getSize()).length()); j++) {
-                size += " ";
-            }
-            for(int j = 0; j < (lnUID - (entries[i].getInode().getUserID() == 0 ? "root".length() : "scc211".length())); j++) {
-                uid += " ";
-            }
-            for(int j = 0; j < (lnGID - (entries[i].getInode().getUserID() == 0 ? "root".length() : "users".length())); j++) {
-                gid += " ";
-            }
-            for(int j = 0; j < (lnLnk - String.valueOf(cur.getLinks()).length()); j++) {
-                lnk += " ";
-            }
-            System.out.println(cur.getPermissionString() + " " + lnk + cur.getLinks() + " " + (cur.getUserID() == 0 ? "root" : "scc211") + uid +
-                    " " + (cur.getGroupID() == 0 ? "root" : "users") + gid + " " +  size + cur.getSize() + " " + Helper.toDate(cur.getModificationTime() * 1000L) + " " + entries[i].getName());
-        }
-    }
 }

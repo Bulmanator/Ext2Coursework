@@ -2,13 +2,13 @@ package com.bulmanator.ext2.Terminal.Commands;
 
 import com.bulmanator.ext2.Structure.Directory;
 import com.bulmanator.ext2.Structure.DirectoryEntry;
-import com.bulmanator.ext2.Structure.Inode;
 import com.bulmanator.ext2.Structure.Volume;
 import com.bulmanator.ext2.Utils.Helper;
 
 public class List implements Command {
 
     private String args;
+    private String format;
 
     public List(String args) {
         this.args = args;
@@ -17,12 +17,13 @@ public class List implements Command {
     @Override
     public void invoke(Volume volume) {
         Directory dir = volume.getCurrentDir();
+        calcSpaces(dir);
         switch (args) {
             case "l":
                 System.out.println("total: " + (dir.getEntryCount() - 2));
                 for (int i = 0; i < dir.getEntryCount(); i++) {
                     if(!dir.getEntry(i).getName().contains(".")) {
-                        printl(dir.getEntry(i));
+                        printLine(dir.getEntry(i));
                     }
                 }
                 break;
@@ -35,7 +36,7 @@ public class List implements Command {
             case "la":
                 System.out.println("total: " + dir.getEntryCount());
                 for (int i = 0; i < dir.getEntryCount(); i++) {
-                    printl(dir.getEntry(i));
+                    printLine(dir.getEntry(i));
                 }
                 break;
             case "":
@@ -51,15 +52,39 @@ public class List implements Command {
         }
     }
 
-    private void printl(DirectoryEntry entry) {
-        String print = entry.getInode().getPermissionString();
-        print += " " + entry.getInode().getLinks();
-        print += " " + entry.getInode().getUserID();
-        print += " " + entry.getInode().getGroupID();
-        print += " " + entry.getInode().getSize();
-        print += " " + Helper.toDate(entry.getInode().getModificationTime() * 1000L);
-        print += " " + entry.getName();
+    private void printLine(DirectoryEntry entry) {
+        String user = entry.getInode().getUserID() == 0 ? "root" : entry.getInode().getUserID() == 1000 ? "scc211" : "unknown";
+        String grp = entry.getInode().getGroupID() == 0 ? "root" : entry.getInode().getGroupID() == 1000 ? "scc211" : "unknown";
+        System.out.printf(
+                format,
+                entry.getInode().getPermissionString(),
+                entry.getInode().getLinks(),
+                user,
+                grp,
+                entry.getInode().getSize(),
+                Helper.toDate(entry.getInode().getModificationTime() * 1000L),
+                entry.getName()
+        );
+    }
 
-        System.out.println(print);
+    private void calcSpaces(Directory dir) {
+        int uid = 0, gid = 0, size = 0, links = 0;
+        for(int i = 0; i < dir.getEntryCount(); i++) {
+            DirectoryEntry curEnt = dir.getEntry(i);
+
+            int val = curEnt.getInode().getUserID() == 0 ? 4 : curEnt.getInode().getUserID() == 1000 ? 6 : 7;
+            if(val > uid) uid = val;
+
+            val = curEnt.getInode().getGroupID() == 0 ? 4 : curEnt.getInode().getGroupID() == 1000 ? 6 : 7;
+            if(val > gid) gid = val;
+
+            val = String.valueOf(curEnt.getInode().getSize()).length();
+            if(val > size) size = val;
+
+            val = String.valueOf(curEnt.getInode().getLinks()).length();
+            if(val > links) links = val;
+        }
+
+        format = "%s %" + links + "d %-" + uid + "s %-" + gid + "s %" + size + "d %s %s\n";
     }
 }

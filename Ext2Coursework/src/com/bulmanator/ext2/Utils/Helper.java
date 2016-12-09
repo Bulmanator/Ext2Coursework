@@ -11,7 +11,7 @@ public class Helper {
      * @param bytes The byte array to dump
      */
     public static void dumpHexBytes(byte[] bytes) {
-        int length = bytes.length + (16 - (bytes.length % 16));
+        int length = bytes.length + (16 - (bytes.length % 16)); //((bytes.length % 16 != 0) ? (16 - (bytes.length % 16)) : 0);
 
         for(int i = 0; i < length; i++) {
 
@@ -28,6 +28,7 @@ public class Helper {
             if((i + 1) % 16 == 0) {
                 for(int j = i - 15; j <= i; j++) {
                     if(j < bytes.length) {
+                        // Checks ASCII range otherwise prints '-'
                         if (bytes[j] > 31 && bytes[j] < 127) {
                             System.out.printf("%c", bytes[j]);
                         } else {

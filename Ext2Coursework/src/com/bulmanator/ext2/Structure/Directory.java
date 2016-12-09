@@ -1,17 +1,19 @@
 package com.bulmanator.ext2.Structure;
 
-import java.util.Vector;
+import java.util.ArrayList;
 
 public class Directory {
 
+    /** Represents that the directory was found */
     public static final int FOUND = 0;
+    /** Represents that the directory was not found */
     public static final int NOT_FOUND = 1;
+    /** Represents that the directory was found but was not a directory */
     public static final int FILE = 2;
 
     private String path;
     private DirectoryEntry[] entries;
     private Inode inode;
-
     private int foundType;
 
     /**
@@ -30,12 +32,16 @@ public class Directory {
             return;
         }
 
+        // Split the path into its directory counter parts
         String[] directories = path.startsWith("/") ? path.substring(1).split("/") : path.split("/");
 
+        // Load the current directory from the volume
         Directory curDir = volume.getCurrentDir();
 
         int curPath = 0;
         boolean fileFound = false, treeEnd = false;
+        // Loop through all of the directory entries in the current directory until it finds
+        // the entry it's looking for or reaches the end of the tree
         while(!fileFound && !treeEnd) {
             for (int i = 0; i < curDir.getEntryCount(); i++) {
                 if(directories[curPath].equals(curDir.getEntry(i).getName())) {
@@ -43,11 +49,13 @@ public class Directory {
                     if(curPath == directories.length) {
                         fileFound = true;
                         inode = curDir.getEntry(i).getInode();
-                       if(!inode.isDirectory()) {
+                        // If it finds it but is not a directory
+                        // Set the foundType to a error value
+                        if(!inode.isDirectory()) {
                            inode = null;
                            foundType = FILE;
                            return;
-                       }
+                        }
                     }
                     else {
                         curDir = new Directory(volume, curDir.getEntry(i).getInode());
@@ -59,8 +67,10 @@ public class Directory {
             }
         }
 
+        // Directory found get all of the entries associated
         if(fileFound) {
             initDirEntries(volume);
+            // Set the foundType to a non error bit
             foundType = FOUND;
         }
         else {
@@ -86,18 +96,19 @@ public class Directory {
 
     /**
      * Initialises all of the directory entries for the specified Inode
-     * @param volume
+     * @param volume The volume where the directory is located to read data from
      */
     private void initDirEntries(Volume volume) {
-        Vector<DirectoryEntry> tmp = new Vector<>();
+        ArrayList<DirectoryEntry> tmp = new ArrayList<>();
 
         int overallOffset = 0, currentOffset = 0;
         int curPointer = 0, ptrCount = 0;
         while (curPointer == 0) {
-            curPointer = volume.getBlockPointer(inode, 0);
-            //System.out.printf("Outside While loop! Current Pointer: 0x%02x\n", curPointer);
+            curPointer = volume.getBlockPointer(inode, (ptrCount * volume.BLOCK_COUNT));
             ptrCount++;
         }
+        // Loops until it loads all of the data
+        // Inode size will give the amount of data needed to be loaded
         while(overallOffset < inode.getSize()) {
 
             if(currentOffset == volume.BLOCK_SIZE) {
@@ -116,14 +127,14 @@ public class Directory {
             overallOffset += entry.getLength();
         }
 
+        // Converts the temporary ArrayList to a fixed array
         entries = new DirectoryEntry[tmp.size()];
-        for(int i = 0; i < tmp.size(); i++) {
-            entries[i] = tmp.get(i);
-        }
+        tmp.toArray(entries);
     }
 
     /**
-     * If the directory was found or not, used by the change directory (cd) command
+     * If the directory was found or not, used by the change directory (cd) command<br>
+     *     0 for found, 1 for found but is a file and 2 for not found
      * @return An integer representing if the directory was found or not
      */
     public int getFoundType() { return foundType; }

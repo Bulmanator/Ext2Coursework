@@ -6,17 +6,18 @@ import com.bulmanator.ext2.Structure.Volume;
 import com.bulmanator.ext2.Terminal.Commands.ChangeDir;
 import com.bulmanator.ext2.Terminal.Commands.Concatenate;
 import com.bulmanator.ext2.Terminal.Commands.List;
+import com.bulmanator.ext2.Terminal.Commands.Print;
 
 import java.util.Scanner;
 
-public class Interpeter {
+public class Interpreter {
 
     private Scanner input;
     private boolean exit;
     private Volume volume;
     String curPath;
 
-    public Interpeter(Volume volume) {
+    public Interpreter(Volume volume) {
         this.volume = volume;
         input = new Scanner(System.in);
 
@@ -68,14 +69,36 @@ public class Interpeter {
                 ChangeDir cd = new ChangeDir(newDir, arg);
                 cd.invoke(volume);
             }
-            else if(cmd[0].equals("pwd")) {
-                System.out.println(curPath.startsWith("/") ? curPath : "/" + curPath);
-            }
-            else if(cmd[0].equals("print")) {
-                if(arg.equals("")) volume.getCurrentDir().getInode().printInodeData();
-            }
             else if(cmd[0].equals("exit") || cmd[0].equals("quit")) {
                 exit = true;
+            }
+            else if(cmd[0].equals("print")) {
+
+                String[] args = arg.split(" ");
+                Ext2File f = null;
+                if(args.length > 0) {
+                    f = new Ext2File(volume, args[0]);
+                    if(f.getFound() == Ext2File.FOUND || f.getFound() == Ext2File.DIR) {
+                        String[] tmp = args;
+                        args = new String[tmp.length - 1];
+                        for (int i = 1; i < tmp.length; i++) {
+                            args[i - 1] = tmp[i];
+                        }
+                    }
+                    else { f = null; }
+                }
+
+                Print print = new Print(f, args);
+                print.invoke(volume);
+            }
+            else if(cmd[0].equals("help")) {
+                System.out.println("Available Commands: ");
+                System.out.println(" - help: Print this message");
+                System.out.println(" - cd: Change Directory");
+                System.out.println(" - cat: Print out file data");
+                System.out.println(" - ls: List directory entries");
+                System.out.println(" - print: Print out/ dump various things (DEBUG / UTILITY)");
+                System.out.println(" - exit/ quit: Close the interpreter");
             }
             else {
                 System.out.println(cmd[0] + ": command not found");

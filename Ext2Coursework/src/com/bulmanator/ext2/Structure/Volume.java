@@ -119,7 +119,7 @@ public class Volume {
     }
 
     /**
-     * Gets an Inode from a index
+     * Gets an Inode from an index
      * @param index The index of the inode
      * @return The Inode
      * @see Inode

@@ -133,9 +133,9 @@ public class Directory {
     }
 
     /**
-     * If the directory was found or not, used by the change directory (cd) command<br>
-     *     0 for found, 1 for found but is a file and 2 for not found
-     * @return An integer representing if the directory was found or not
+     * If the directory was found or not, used by the change directory (cd) command
+     * @return 0 for found, 1 for not found and 2 for found but is a file
+     * @see com.bulmanator.ext2.Terminal.Commands.ChangeDir
      */
     public int getFoundType() { return foundType; }
 

@@ -44,7 +44,7 @@ public class DirectoryEntry {
     public int getLength() { return length; }
 
     /**
-     * Gets the Length of the entry name
+     * Gets the length of the entry name
      * @return The name length
      */
     public int getNameLength() { return name.length(); }
